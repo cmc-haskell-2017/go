@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/cmc-haskell-2017/project-template.svg?branch=master)](https://travis-ci.org/cmc-haskell-2017/project-template)
 
-Шаблон проекта для выполнения практического задания.
+Практическое задние настольная игра "Го".
 
 ## Сборка и запуск
 
