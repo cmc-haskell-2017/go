@@ -17,6 +17,4 @@ cabal.sandbox.config
 *.eventlog
 .stack-work/
 cabal.project.local
-*.ghci
-*.travis.yml
 .directory
