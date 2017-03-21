@@ -10,7 +10,7 @@ run = do
     bgColor = green   -- цвет фона
     fps     = 60      -- кол-во кадров в секунду
 
-    drawGame x = blank
+    -- drawGame x = blank
     updateGame _ x = x	
 
 -- памятка
@@ -23,6 +23,8 @@ run = do
   -- -> (Float -> world -> world) - обновление для каждого кадра
   -- -> IO ()
 
+
+-- функция отрисовки и функция победителя.
 -- =========================================
 -- Модель игры
 -- =========================================
@@ -40,7 +42,10 @@ type Score = Float
 -- | Количество очков двух игроков
 type Scores = (Score, Score)
 
+type Point2 = (Int, Int)
+
 -- | Над игровым полем еще надо подумать
+-- type Board = Map Point2 Cell
 type Board = [[Cell]]
 
 -- | состоние поля, мне кажется оно должно быть таким 
@@ -49,7 +54,9 @@ data Game = Game
   , gameScore :: Scores -- количества очков для первого и второго игрока
   , gameComi :: Float -- колличество форы
   , gameWinner :: Maybe Stone -- победитель?!
-    --GameBoard :: Board
+  , gameBoard :: Board
+  , listBoard :: [Board]
+  -- список всех предыдущих состояний
   }
 
 -- | Начальное состояние игры.
@@ -68,6 +75,9 @@ initGame = Game
 -- Отрисовка игры
 -- =========================================
 
+drawGame :: Game -> Picture
+drawGame x = blank
+
 
 -- =========================================
 -- Обработка событий
@@ -80,26 +90,36 @@ handleGame _ = id
 
 
 -- | Поставить камень и сменить игрока (если возможно).
-placeStone :: (Int, Int) -> Game -> Game
+placeStone :: Point2 -> Game -> Game -- fix
 placeStone _ x = x
 
 -- | Проверка на правила игры
+-- isPossible :: Point2 -> [Board] -> Board -> Stone -> Bool -- In
 
+
+-- функция равенства досок
+-- под каждое правило своя функция
+
+-- поставить камень
+-- place :: Point2 -> Stone -> Board -> Board
+
+-- сменить игрока
+-- switch :: Stone -> Stone
 
 -- | Подсчет количество очков
-amountScores :: Board -> Game -> Scores
-amountScores _ _ = (0, 0)
+amountScores :: Board -> Scores
+amountScores _ _ = (0.0, 0.0)
 
 
 -- | Получить координаты клетки под мышкой.
-mouseToCell :: Point -> (Int, Int)
+mouseToCell :: Point -> Point2
 mouseToCell (x, y) = (i, j)
   where
     i = floor (x + fromIntegral screenWidth  / 2) `div` cellSize
     j = floor (y + fromIntegral screenHeight / 2) `div` cellSize
 
 -- =========================================
--- Константы, параметры игры. По началу, потом будет переменные величины
+-- Константы, параметры игры. 
 -- =========================================
 
 -- | Начальная фора белого игрока
