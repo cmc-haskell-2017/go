@@ -7,7 +7,7 @@ homepage:            https://github.com/cmc-haskell-2017/go
 -- license-file:
 author:              Team: Неуловимые Мстители
 maintainer:          Opavlyuchenkov@gmail.com
-copyright:           2017 
+copyright:           2017
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
@@ -15,9 +15,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   ghc-options:         -Wall -fno-warn-type-defaults
-  exposed-modules:     Server
+  exposed-modules:     Game
   build-depends:       base >= 4.7 && < 5
                        , gloss
+                       , containers
   default-language:    Haskell2010
 
 executable Game-Go
@@ -40,4 +41,3 @@ test-suite my-project-test
 source-repository head
   type:     git
   location: https://github.com/cmc-haskell-2017/go
-

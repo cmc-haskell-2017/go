@@ -16,7 +16,7 @@ stack build
 Собрать и запустить проект можно при помощи команды
 
 ```
-stack build && stack exec my-project
+stack build && stack exec Game-Go
 ```
 
 Запустить тесты можно при помощи команды
@@ -30,4 +30,3 @@ stack test
 ```
 stack ghci
 ```
-

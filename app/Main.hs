@@ -1,6 +1,6 @@
 module Main where
 
-import Server
+import Game
 
 main :: IO ()
 main = run
