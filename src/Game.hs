@@ -34,7 +34,7 @@ data Stone = Black | White
   deriving(Eq, Show)
 
 -- | Клетка поля, но это не точно
-data Cell = Maybe Stone
+type Cell = Maybe Stone
 
 -- | Количество очков для одного игрока
 type Score = Float
@@ -67,9 +67,13 @@ initGame = Game
   , gameScore = (0, 0)
   , gameComi = playerComi
   , gameWinner = Nothing
-  -- , gameBoard  = replicate boardHeight (replicate boardWidth Nothing)
+  , gameBoard  = initBoard
+  , listBoard = []
   }
 
+-- | Построение пустого поля
+initBoard :: Board
+initBoard  = Map.singleton (0, 0) (Just Black)
 -- =========================================
 -- Отрисовка игры
 -- =========================================
@@ -96,26 +100,28 @@ drawGrid = color black (pictures (hs ++ vs))
     m = fromIntegral boardHeight
 
 -- | Нарисовать фишки на игровом поле.
--- drawBoard :: Maybe Mark -> Board -> Picture
+drawBoard :: Board -> Picture
+drawBoard board = pictures (map drawCells (Map.toList board))
+  where
+    drawCells ((x, y), cell) = translate (0.5 + fromIntegral x) (0.5 + fromIntegral y) (drawCell cell)
 
--- | Нарисовать камень
--- drawCell :: (Int, Int) -> Maybe Stone -> Cell -> Picture
+-- | Нарисовать камень, если он там есть
+drawCell :: Cell -> Picture
+drawCell (Just stone) = drawStone stone
 
 
 -- | Нарисовать камень.
--- drawStone:: Stone -> Picture
--- drawStone Black = drawX
--- drawStone White = drawO
---
--- -- | Нарисовать «крестик».
--- drawX :: Picture
--- drawX = pictures
---   [ polygon [(-0.4,  0.3), (-0.3,  0.4), ( 0.4, -0.3), ( 0.3, -0.4)]
---   , polygon [(-0.4, -0.3), (-0.3, -0.4), ( 0.4,  0.3), ( 0.3,  0.4)] ]
---
--- -- | Нарисовать «нолик».
--- drawO :: Picture
--- drawO = thickCircle 0.3 0.1
+drawStone:: Stone -> Picture
+drawStone Black = drawBlack
+drawStone White = drawWhite
+
+-- | Нарисовать черный камень.
+drawBlack :: Picture
+drawBlack = color black (Circle 0.6)
+
+-- | Нарисовать белый камень.
+drawWhite :: Picture
+drawWhite = color white (Circle 0.6)
 
 
 -- =========================================
@@ -130,7 +136,8 @@ handleGame _ = id
 
 -- | Поставить камень и сменить игрока (если возможно).
 placeStone :: Point2 -> Game -> Game -- fix
-placeStone _ x = x
+placeStone (x, y) game =
+   
 
 -- | Проверка на правила игры
 -- isPossible :: Point2 -> [Board] -> Board -> Stone -> Bool -- In
