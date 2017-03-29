@@ -71,7 +71,7 @@ initGame = Game
   , listBoard = []
   }
 
--- | Построение пустого поля
+-- | Построение пустого поля/ траблы
 initBoard :: Board
 initBoard  = Map.singleton (0, 0) (Just Black)
 -- =========================================
@@ -99,7 +99,7 @@ drawGrid = color black (pictures (hs ++ vs))
     n = fromIntegral boardWidth
     m = fromIntegral boardHeight
 
--- | Нарисовать фишки на игровом поле.
+-- | Нарисовать фишки на игровом поле/ протестировать, подогнать параметры
 drawBoard :: Board -> Picture
 drawBoard board = pictures (map drawCells (Map.toList board))
   where
@@ -108,7 +108,6 @@ drawBoard board = pictures (map drawCells (Map.toList board))
 -- | Нарисовать камень, если он там есть
 drawCell :: Cell -> Picture
 drawCell (Just stone) = drawStone stone
-
 
 -- | Нарисовать камень.
 drawStone:: Stone -> Picture
@@ -137,7 +136,21 @@ handleGame _ = id
 -- | Поставить камень и сменить игрока (если возможно).
 placeStone :: Point2 -> Game -> Game -- fix
 placeStone (x, y) game =
-   
+  case gameWinner game of
+    Just _ -> game    -- если есть победитель, то поставить фишку нельзя
+    Nothing -> case Nothing of --здесь еще нужно дописать функцию преобразования
+      Nothing -> game -- если поставить фишку нельзя, ничего не изменится
+      Just newBoard -> game
+        { gamePlayer = switchPlayer (gamePlayer game)
+        , gameScore = amountScores newBoard
+        , gameComi = gameComi game
+        , gameWinner = winner game
+        , gameBoard  = newBoard
+        , listBoard = (gameBoard game) : (listBoard game)
+        }
+  where
+    place Nothing = Just (Just (gamePlayer game))
+    place _       = Nothing -- если клетка занята, поставить фишку нельзя
 
 -- | Проверка на правила игры
 -- isPossible :: Point2 -> [Board] -> Board -> Stone -> Bool -- In
@@ -163,11 +176,16 @@ placeStone (x, y) game =
 -- place :: Point2 -> Stone -> Board -> Board
 
 -- | сменить игрока
--- switch :: Stone -> Stone
+switchPlayer :: Stone -> Stone
+switchPlayer Black = White
+switchPlayer White = Black
+
 
 -- | Подсчет количество очков
--- amountScores :: Board -> Scores
--- amountScores _ _ = (0.0, 0.0)
+-- самое сложное из всей базовой части это подсчитать очки
+-- над этим надо хорошенько подумать
+amountScores :: Board -> Scores
+amountScores _ = (0.0, 0.0)
 
 
 -- | Получить координаты клетки под мышкой.
@@ -178,7 +196,8 @@ mouseToCell (x, y) = (i, j)
     j = floor (y + fromIntegral screenHeight / 2) `div` cellSize
 
 -- | Определить победителя на игровом поле
--- winner :: Game -> Maybe Stone
+winner :: Game -> Maybe Stone
+winner _ = Nothing
 
 
 -- | Обновление игры.
@@ -191,9 +210,17 @@ updateGame _ = id
 -- Константы, параметры игры.
 -- =========================================
 
--- | Начальная фора белого игрока
+-- | Начальная фора(очки) белого игрока
+-- надо уточнить отрезок возмодных значений
 playerComi :: Float
-playerComi = 6.5
+playerComi = 5.5
+
+-- | начальная фора(камни) черного игрока, надо подумать как это реализовать
+-- обозначает, сколько камней должен поставит черный игрок перед началом партии
+-- это нужно если очковой форы не хватает и игроки слишком разного уровня
+-- но не более определенного кол-ва камней, уточним потом в правилах
+playerHandicap :: Int
+playerHandicap = 0
 
 -- | Ширина игрового поля в клетках.
 boardWidth :: Int
