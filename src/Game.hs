@@ -81,8 +81,8 @@ createList = createListadd 0 0
 
 createListadd:: Int->Int->[(Point2, Cell)]
 createListadd i1 i2
-  |i2 < boardWidth = ((i1,i2), Empty) : createListadd i1 (i2+1)
-	|i1 < boardHeight = ((i1,i2), Empty) : createListadd (i1+1) 0
+  |i2 < boardWidth - 1 = ((i1,i2), Empty) : createListadd i1 (i2+1)
+	|i1 < boardHeight - 1 = ((i1,i2), Empty) : createListadd (i1+1) 0
 	|otherwise = []
 
 -- =========================================
