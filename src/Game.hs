@@ -34,7 +34,7 @@ data Stone = Black | White
   deriving(Eq, Show)
 
 -- | Клетка поля, но это не точно
-type Cell = Maybe Stone
+type Cell = Maybe Stone -- переделать под data
 
 -- | Количество очков для одного игрока
 type Score = Float
@@ -74,23 +74,30 @@ initGame = Game
 -- | Построение пустого поля/ траблы
 initBoard :: Board
 initBoard  = Map.fromList(createList)
---Map.singleton (0, 0) (Just Black)
--- =========================================
--- Отрисовка игры
--- =========================================
 
 createList::[(Point2, Maybe Stone)]
 createList = createListadd 0 0
 
 createListadd:: Int->Int->[(Point2, Maybe Stone)]
+<<<<<<< HEAD
+createListadd i1 i2
+  |i2 < boardWidth = ((i1,i2), Nothing) : createListadd i1 (i2+1)
+	|i1 < boardHeight = ((i1,i2), Nothing) : createListadd (i1+1) 0
+	|otherwise = []
+
+-- =========================================
+-- Отрисовка игры
+-- =========================================
+=======
 createListadd i1 i2 |i2 < boardWidth = ((i1,i2), Nothing) : createListadd i1 (i2+1)
 	      	          |i1 < boardHeight = ((i1,i2), Nothing) : createListadd (i1+1) 0
                     |otherwise = []
+>>>>>>> master
 
 drawGame :: Game -> Picture
 drawGame game = translate (-w) (-h) (scale c c (pictures
   [ drawGrid
-  , blank
+  , drawBoard (gameBoard game)
   ]))
   where
     c = fromIntegral cellSize
@@ -102,8 +109,8 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
 drawGrid :: Picture
 drawGrid = color black (pictures (hs ++ vs))
   where
-    hs = map (\j -> line [(0, j), (n, j)]) [0..m]
-    vs = map (\i -> line [(i, 0), (i, m)]) [0..n]
+    hs = map (\j -> line [(0, j), (n-1, j)]) [0..m-1]
+    vs = map (\i -> line [(i, 0), (i, m-1)]) [0..n-1]
 
     n = fromIntegral boardWidth
     m = fromIntegral boardHeight
@@ -112,11 +119,12 @@ drawGrid = color black (pictures (hs ++ vs))
 drawBoard :: Board -> Picture
 drawBoard board = pictures (map drawCells (Map.toList board))
   where
-    drawCells ((x, y), cell) = translate (0.5 + fromIntegral x) (0.5 + fromIntegral y) (drawCell cell)
+    drawCells ((x, y), cell) = translate (fromIntegral x) (fromIntegral y) (drawCell cell)
 
 -- | Нарисовать камень, если он там есть
 drawCell :: Cell -> Picture
 drawCell (Just stone) = drawStone stone
+drawCell Nothing = blank
 
 -- | Нарисовать камень.
 drawStone:: Stone -> Picture
@@ -144,10 +152,14 @@ handleGame _ = id
 
 -- | Поставить камень и сменить игрока (если возможно).
 placeStone :: Point2 -> Game -> Game -- fix
-placeStone (x, y) game =
+placeStone (i, j) game =
   case gameWinner game of
     Just _ -> game    -- если есть победитель, то поставить фишку нельзя
-    Nothing -> case Nothing of --здесь еще нужно дописать функцию преобразования,применяющую преобразование (ход) к Map 
+<<<<<<< HEAD
+    Nothing -> case modifyAt (i, j) (gameBoard game) (gamePlayer game) of --здесь еще нужно дописать функцию преобразования
+=======
+    Nothing -> case Nothing of --здесь еще нужно дописать функцию преобразования,применяющую преобразование (ход) к Map
+>>>>>>> master
       Nothing -> game -- если поставить фишку нельзя, ничего не изменится
       Just newBoard -> game
         { gamePlayer = switchPlayer (gamePlayer game)
@@ -157,16 +169,28 @@ placeStone (x, y) game =
         , gameBoard  = newBoard
         , listBoard = (gameBoard game) : (listBoard game)
         }
-  where
-    place Nothing = Just (Just (gamePlayer game))
-    place _       = Nothing -- если клетка занята, поставить фишку нельзя
+
+-- | Применить преобразование к элементу map
+-- с заданным ключом. Если преобразование не удалось — вернуть 'Nothing'.
+-- Иначе вернуть преобразованный map.
+modifyAt :: Point2 -> Board -> Stone -> Maybe Board
+modifyAt p board stone
+  | ruleBusy p board = Nothing
+  | otherwise = (Just (place p stone board))
 
 -- | Проверка на правила игры
 -- isPossible :: Point2 -> [Board] -> Board -> Stone -> Bool -- In
 
-
 -- | функция равенства досок
--- equalBoard :: Board -> Board -> Bool
+equalBoards :: Board -> Board -> Bool
+equalBoards = byKey 0 0
+  where
+    byKey i1 i2 a b
+      | i2 < boardWidth =
+        (Map.lookup (i1, i2) a) == (Map.lookup (i1, i2) b) && byKey i1 (i2+1) a b
+      | i1 < boardHeight =
+        (Map.lookup (i1, i2) a) == (Map.lookup (i1, i2) b) && byKey (i1+1) 0 a b
+      | otherwise = True
 
 -- | правило Ко борьбы
 -- ruleKo :: Point2 -> Stone -> Board -> [Board] -> Bool
@@ -175,14 +199,18 @@ placeStone (x, y) game =
 -- ruleFreedom :: Point2 -> Stone -> Board -> Bool
 
 -- | занято ли место
--- ruleBusy :: Point2 -> Board -> Bool
+ruleBusy :: Point2 -> Board -> Bool
+ruleBusy p board
+  | Map.lookup p board == Nothing = False
+  | otherwise = True
 
 -- | убрать камни без свободы и засчитать другому игроку столько очков,
 -- сколько было убрано камней
 -- removeStones :: Stone -> Game -> Game
 
 -- | поставить камень
--- place :: Point2 -> Stone -> Board -> Board
+place :: Point2 -> Stone -> Board -> Board
+place p stone = Map.insert p (Just stone)
 
 -- | сменить игрока
 switchPlayer :: Stone -> Stone
