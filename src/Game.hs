@@ -79,7 +79,6 @@ createList::[(Point2, Maybe Stone)]
 createList = createListadd 0 0
 
 createListadd:: Int->Int->[(Point2, Maybe Stone)]
-<<<<<<< HEAD
 createListadd i1 i2
   |i2 < boardWidth = ((i1,i2), Nothing) : createListadd i1 (i2+1)
 	|i1 < boardHeight = ((i1,i2), Nothing) : createListadd (i1+1) 0
@@ -88,11 +87,6 @@ createListadd i1 i2
 -- =========================================
 -- Отрисовка игры
 -- =========================================
-=======
-createListadd i1 i2 |i2 < boardWidth = ((i1,i2), Nothing) : createListadd i1 (i2+1)
-	      	          |i1 < boardHeight = ((i1,i2), Nothing) : createListadd (i1+1) 0
-                    |otherwise = []
->>>>>>> master
 
 drawGame :: Game -> Picture
 drawGame game = translate (-w) (-h) (scale c c (pictures
@@ -146,7 +140,7 @@ drawWhite = color white (Circle 0.6)
 
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
-handleGame (EventKey (MouseButton LeftButton) _ _) = placeStone (mouseToCell mouse)
+handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
 handleGame _ = id
 
 
@@ -155,11 +149,7 @@ placeStone :: Point2 -> Game -> Game -- fix
 placeStone (i, j) game =
   case gameWinner game of
     Just _ -> game    -- если есть победитель, то поставить фишку нельзя
-<<<<<<< HEAD
     Nothing -> case modifyAt (i, j) (gameBoard game) (gamePlayer game) of --здесь еще нужно дописать функцию преобразования
-=======
-    Nothing -> case Nothing of --здесь еще нужно дописать функцию преобразования,применяющую преобразование (ход) к Map
->>>>>>> master
       Nothing -> game -- если поставить фишку нельзя, ничего не изменится
       Just newBoard -> game
         { gamePlayer = switchPlayer (gamePlayer game)
