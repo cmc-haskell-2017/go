@@ -34,7 +34,8 @@ data Stone = Black | White
   deriving(Eq, Show)
 
 -- | Клетка поля, но это не точно
-type Cell = Maybe Stone -- переделать под data
+data Cell = Cell Stone | Empty -- переделать под data
+  deriving(Eq, Show)
 
 -- | Количество очков для одного игрока
 type Score = Float
@@ -73,15 +74,15 @@ initGame = Game
 
 -- | Построение пустого поля/ траблы
 initBoard :: Board
-initBoard  = Map.fromList(createList)
+initBoard  = Map.fromAscList(createList)
 
-createList::[(Point2, Maybe Stone)]
+createList::[(Point2, Cell)]
 createList = createListadd 0 0
 
-createListadd:: Int->Int->[(Point2, Maybe Stone)]
+createListadd:: Int->Int->[(Point2, Cell)]
 createListadd i1 i2
-  |i2 < boardWidth = ((i1,i2), Nothing) : createListadd i1 (i2+1)
-	|i1 < boardHeight = ((i1,i2), Nothing) : createListadd (i1+1) 0
+  |i2 < boardWidth = ((i1,i2), Empty) : createListadd i1 (i2+1)
+	|i1 < boardHeight = ((i1,i2), Empty) : createListadd (i1+1) 0
 	|otherwise = []
 
 -- =========================================
@@ -117,8 +118,9 @@ drawBoard board = pictures (map drawCells (Map.toList board))
 
 -- | Нарисовать камень, если он там есть
 drawCell :: Cell -> Picture
-drawCell (Just stone) = drawStone stone
-drawCell Nothing = blank
+drawCell Empty = blank
+drawCell (Cell stone) = drawStone stone
+
 
 -- | Нарисовать камень.
 drawStone:: Stone -> Picture
@@ -127,11 +129,11 @@ drawStone White = drawWhite
 
 -- | Нарисовать черный камень.
 drawBlack :: Picture
-drawBlack = color black (Circle 0.6)
+drawBlack = color black (thickCircle 0.6 0.6)
 
 -- | Нарисовать белый камень.
 drawWhite :: Picture
-drawWhite = color white (Circle 0.6)
+drawWhite = color white (thickCircle 0.6 0.6)
 
 
 -- =========================================
@@ -146,10 +148,10 @@ handleGame _ = id
 
 -- | Поставить камень и сменить игрока (если возможно).
 placeStone :: Point2 -> Game -> Game -- fix
-placeStone (i, j) game =
+placeStone point game =
   case gameWinner game of
     Just _ -> game    -- если есть победитель, то поставить фишку нельзя
-    Nothing -> case modifyAt (i, j) (gameBoard game) (gamePlayer game) of --здесь еще нужно дописать функцию преобразования
+    Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
       Nothing -> game -- если поставить фишку нельзя, ничего не изменится
       Just newBoard -> game
         { gamePlayer = switchPlayer (gamePlayer game)
@@ -163,13 +165,18 @@ placeStone (i, j) game =
 -- | Применить преобразование к элементу map
 -- с заданным ключом. Если преобразование не удалось — вернуть 'Nothing'.
 -- Иначе вернуть преобразованный map.
-modifyAt :: Point2 -> Board -> Stone -> Maybe Board
-modifyAt p board stone
-  | ruleBusy p board = Nothing
-  | otherwise = (Just (place p stone board))
+modifyAt :: Point2 -> Board -> Stone -> [Board] -> Maybe Board
+modifyAt point board stone boards
+  | isPossible point board stone boards = (Just (place point stone board))
+  | otherwise = Nothing
+  -- | ruleBusy p board = Nothing -- здесь должна быть функция isPossible
+  -- | otherwise = (Just (place p stone board))
 
 -- | Проверка на правила игры
--- isPossible :: Point2 -> [Board] -> Board -> Stone -> Bool -- In
+isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
+isPossible point board _ _ -- два последних параметра нам не нужны, пока не доделали все функции правил
+  | ruleBusy point board = False
+  | otherwise = True
 
 -- | функция равенства досок
 equalBoards :: Board -> Board -> Bool
@@ -191,7 +198,7 @@ equalBoards = byKey 0 0
 -- | занято ли место
 ruleBusy :: Point2 -> Board -> Bool
 ruleBusy p board
-  | Map.lookup p board == Nothing = False
+  | Map.lookup p board == (Just Empty) = False
   | otherwise = True
 
 -- | убрать камни без свободы и засчитать другому игроку столько очков,
@@ -200,7 +207,7 @@ ruleBusy p board
 
 -- | поставить камень
 place :: Point2 -> Stone -> Board -> Board
-place p stone = Map.insert p (Just stone)
+place p stone = Map.insert p (Cell stone)
 
 -- | сменить игрока
 switchPlayer :: Stone -> Stone
