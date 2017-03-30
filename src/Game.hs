@@ -82,10 +82,11 @@ initBoard  = Map.fromList(createList)
 createList::[(Point2, Maybe Stone)]
 createList = createListadd 0 0
 
-createListadd:: int1->int2->(Point2, Maybe Stone)
-createListadd i1 i2 |i2 < boardWidth = ((i1,i2), Nothing) : createListadd i1 i2+1
-	      	    |i1 < boardHeight = ((i1,i2), Nothing) : createListadd i1+1 0
-		    |otherwise = []
+createListadd:: Int->Int->[(Point2, Maybe Stone)]
+createListadd i1 i2 
+					|i2 < boardWidth = ((i1,i2), Nothing) : createListadd i1 (i2+1)
+	      	    	|i1 < boardHeight = ((i1,i2), Nothing) : createListadd (i1+1) 0
+		  		  	|otherwise = []
 
 drawGame :: Game -> Picture
 drawGame game = translate (-w) (-h) (scale c c (pictures
