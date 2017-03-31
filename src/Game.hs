@@ -57,6 +57,7 @@ data Game = Game
   , gameWinner :: Maybe Stone -- победитель?!
   , gameBoard :: Board
   , listBoard :: [Board] -- список всех предыдущих состояний
+  , sizeCell :: Int
   }
 
 -- | Начальное состояние игры.
@@ -70,6 +71,7 @@ initGame = Game
   , gameWinner = Nothing
   , gameBoard  = initBoard
   , listBoard = []
+  , sizeCell = cellSize
   }
 
 -- | Построение пустого поля/ траблы
@@ -95,7 +97,7 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
   , drawBoard (gameBoard game)
   ]))
   where
-    c = fromIntegral cellSize
+    c = fromIntegral (sizeCell game)
     w = fromIntegral screenWidth  / 2 - offset
     h = fromIntegral screenHeight / 2 - offset
     offset = fromIntegral screenOffset / 2
@@ -146,12 +148,20 @@ drawWhite = pictures
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
-handleGame (EventResize size) = resizeBoard size`
+-- handleGame (EventResize size) = resizeBoard size -- не работает почему то??
 handleGame _ = id
 
 -- | изменить размер доски при увеличении размера окна
 resizeBoard :: (Int, Int) -> Game -> Game
-resizeBoard _ game = game
+resizeBoard (x, y) game = game
+  { gamePlayer = gamePlayer game
+  , gameScore = gameScore game
+  , gameComi = gameComi game
+  , gameWinner = gameWinner game
+  , gameBoard  = gameBoard game
+  , listBoard = listBoard game
+  , sizeCell = 10
+  }
 
 -- | Поставить камень и сменить игрока (если возможно).
 placeStone :: Point2 -> Game -> Game -- fix
@@ -167,6 +177,7 @@ placeStone point game =
         , gameWinner = winner game
         , gameBoard  = newBoard
         , listBoard = (gameBoard game) : (listBoard game)
+        , sizeCell = sizeCell game
         }
 
 -- | Применить преобразование к элементу map
