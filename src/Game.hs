@@ -94,7 +94,7 @@ createListadd:: Int -> Int -> [(Point2, Cell)]
 createListadd i1 i2
   |i2 < boardWidth = ((i1,i2), Empty) : createListadd i1 (i2 + 1)
   |i1 < boardHeight - 1 = createListadd (i1 + 1) 0
-	|otherwise = []
+  |otherwise = []
 
 -- =========================================
 -- Отрисовка игры
@@ -140,13 +140,13 @@ drawStone White = drawWhite
 
 -- | Нарисовать черный камень.
 drawBlack :: Picture
-drawBlack = color black (circleSolid 0.45)
+drawBlack = color black (circleSolid radiusStone)
 
 -- | Нарисовать белый камень.
 drawWhite :: Picture
 drawWhite = pictures
-  [color white (circleSolid 0.45)
-  , color black (circle 0.45)
+  [color white (circleSolid radiusStone)
+  , color black (circle radiusStone)
   ]
 
 
@@ -167,7 +167,8 @@ mouseToCell (x, y) = (Just (i, j))
     j = floor (y + fromIntegral screenHeight / 2) `div` cellSize
 
 -- | Поставить камень и сменить игрока (если возможно).
-placeStone :: Maybe Point2 -> Game -> Game -- fix
+placeStone :: Maybe Point2 -> Game -> Game
+placeStone Nothing game = game
 placeStone (Just point) game =
     case gameWinner game of
       Just _ -> game    -- если есть победитель, то поставить фишку нельзя
@@ -262,6 +263,10 @@ updateGame _ = id
 -- =========================================
 -- Константы, параметры игры.
 -- =========================================
+
+-- | радиус картинки камня
+radiusStone :: Float
+radiusStone = 0.45
 
 -- | Начальная фора(очки) белого игрока
 -- может варьироваться уже по желания, но это позже в индивидуальных частях
