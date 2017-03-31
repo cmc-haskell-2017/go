@@ -49,6 +49,15 @@ type Point2 = (Int, Int)
 -- | Игровое поле
 type Board = Map Point2 Cell
 
+-- | кол-во камней, которые "съели" черные
+type Blacksum = Int
+
+-- | кол-во камней, которые "съели" белые
+type Whitesum = Int
+
+-- | кол-во камней убранных каждым игроком
+type AmountStones = (Blacksum, Whitesum)
+
 -- | состоние поля, мне кажется оно должно быть таким
 data Game = Game
   { gamePlayer :: Stone -- чей ход
@@ -57,6 +66,7 @@ data Game = Game
   , gameWinner :: Maybe Stone -- победитель?!
   , gameBoard :: Board
   , listBoard :: [Board] -- список всех предыдущих состояний
+  , scoreStones :: AmountStones -- кол-во камней убранных каждым игроком
   }
 
 -- | Начальное состояние игры.
@@ -70,6 +80,7 @@ initGame = Game
   , gameWinner = Nothing
   , gameBoard  = initBoard
   , listBoard = []
+  , scoreStones = (0, 0)
   }
 
 -- | Построение пустого поля/ траблы
@@ -163,6 +174,7 @@ placeStone point game =
         , gameWinner = winner game
         , gameBoard  = newBoard
         , listBoard = (gameBoard game) : (listBoard game)
+        , scoreStones = (0, 0)
         }
 
 -- | Применить преобразование к элементу map
@@ -198,13 +210,6 @@ equalBoards = byKey 0 0
 -- | правило свободы
 -- ruleFreedom :: Point2 -> Stone -> Board -> Bool
 
--- | удаление мертвых камней при окончании игры
--- Например, когда игра закончилась(оба игрока с пасовали), то остались группы камней,
--- у которых еще есть свобода, но при этом они считаются мертвыми, потому что
--- другой игрок может убрать их за пару ходов. Если у этих камней есть возможность поставить два глаза,
--- то они не могут быть убраны.
---removeDead :: Game -> Game
-
 -- | занято ли место
 ruleBusy :: Point2 -> Board -> Bool
 ruleBusy p board
@@ -214,6 +219,13 @@ ruleBusy p board
 -- | убрать камни без свободы и засчитать другому игроку столько очков,
 -- сколько было убрано камней
 -- removeStones :: Stone -> Game -> Game
+
+-- | удаление мертвых камней при окончании игры
+-- Например, когда игра закончилась(оба игрока с пасовали), то остались группы камней,
+-- у которых еще есть свобода, но при этом они считаются мертвыми, потому что
+-- другой игрок может убрать их за пару ходов. Если у этих камней есть возможность поставить два глаза,
+-- то они не могут быть убраны.
+--removeDead :: Game -> Game
 
 -- | поставить камень
 place :: Point2 -> Stone -> Board -> Board
