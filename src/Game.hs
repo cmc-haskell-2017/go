@@ -148,7 +148,7 @@ drawWhite = pictures
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
--- handleGame (EventResize size) = resizeBoard size -- не работает почему то??
+-- handleGame (EventResize size) = resizeBoard size -- не работает почему то?? она вызывает ее с самого начала
 handleGame _ = id
 
 -- | изменить размер доски при увеличении размера окна
