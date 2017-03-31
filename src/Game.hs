@@ -146,8 +146,12 @@ drawWhite = pictures
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
+handleGame (EventResize size) = resizeBoard size`
 handleGame _ = id
 
+-- | изменить размер доски при увеличении размера окна
+resizeBoard :: (Int, Int) -> Game -> Game
+resizeBoard _ game = game
 
 -- | Поставить камень и сменить игрока (если возможно).
 placeStone :: Point2 -> Game -> Game -- fix
