@@ -129,11 +129,14 @@ drawStone White = drawWhite
 
 -- | Нарисовать черный камень.
 drawBlack :: Picture
-drawBlack = color black (thickCircle 0.6 0.6)
+drawBlack = color black (thickCircle 0 1)
 
 -- | Нарисовать белый камень.
 drawWhite :: Picture
-drawWhite = color white (thickCircle 0.6 0.6)
+drawWhite = pictures
+  [color white (thickCircle 0 0.9)
+  , color black (circle 0.45)
+  ]
 
 
 -- =========================================
@@ -194,6 +197,13 @@ equalBoards = byKey 0 0
 --
 -- | правило свободы
 -- ruleFreedom :: Point2 -> Stone -> Board -> Bool
+
+-- | удаление мертвых камней при окончании игры
+-- Например, когда игра закончилась(оба игрока с пасовали), то остались группы камней,
+-- у которых еще есть свобода, но при этом они считаются мертвыми, потому что
+-- другой игрок может убрать их за пару ходов. Если у этих камней есть возможность поставить два глаза,
+-- то они не могут быть убраны.
+--removeDead :: Game -> Game
 
 -- | занято ли место
 ruleBusy :: Point2 -> Board -> Bool
