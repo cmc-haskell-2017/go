@@ -191,8 +191,9 @@ modifyAt point board stone boards
 
 -- | Проверка на правила игры
 isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
-isPossible point board _ _ -- два последних параметра нам не нужны, пока не доделали все функции правил
+isPossible point board stone boards -- два последних параметра нам не нужны, пока не доделали все функции правил
   | ruleBusy point board = False
+  | ruleKo point stone board boards = True 
   | otherwise = True
 
 -- | функция равенства досок
@@ -206,8 +207,26 @@ equalBoards = byKey 0 0
         (Map.lookup (i1, i2) a) == (Map.lookup (i1, i2) b) && byKey (i1+1) 0 a b
       | otherwise = True
 
+
 -- | правило Ко борьбы
 -- ruleKo :: Point2 -> Stone -> Board -> [Board] -> Bool
+
+--ruleKo :: Board -> [Board] -> Bool   -- Конкретно данное состояние встретилось менее трех раз => все норм
+--ruleKo board boards
+--      | ammEqBoards board boards 0 < 3 = True
+--      | otherwise = False -- Выдать сообщение?
+
+ruleKo :: Point2 -> Stone -> Board -> [Board] -> Bool -- Требуемое состояние уже встречалось
+ruleKo point stone board boards
+      | ammEqBoards (place point stone board) boards 0 == 0 = True
+      | otherwise = False
+
+-- | Сколько раз встречалась такая доска раньше
+ammEqBoards :: Board -> [Board] -> Int -> Int
+ammEqBoards _ [] a = a
+ammEqBoards board (x:xs) a | equalBoards board x == True = ammEqBoards board xs a+1
+                         | otherwise = ammEqBoards board xs a
+
 --
 -- | правило свободы
 ruleFreedom :: Point2 -> Stone -> Board -> Bool
