@@ -12,7 +12,6 @@ run = do
     bgColor = makeColorI 245 245 220 255 -- цвет фона
     fps     = 60      -- кол-во кадров в секунду
 
-
 -- памятка
 --play :: Display
   -- -> Color
@@ -132,7 +131,6 @@ drawCell :: Cell -> Picture
 drawCell Empty = blank
 drawCell (Cell stone) = drawStone stone
 
-
 -- | Нарисовать камень.
 drawStone:: Stone -> Picture
 drawStone Black = drawBlack
@@ -148,7 +146,6 @@ drawWhite = pictures
   [color white (circleSolid radiusStone)
   , color black (circle radiusStone)
   ]
-
 
 -- =========================================
 -- Обработка событий
@@ -191,8 +188,6 @@ modifyAt :: Point2 -> Board -> Stone -> [Board] -> Maybe Board
 modifyAt point board stone boards
   | isPossible point board stone boards = (Just (place point stone board))
   | otherwise = Nothing
-  -- | ruleBusy p board = Nothing -- здесь должна быть функция isPossible
-  -- | otherwise = (Just (place p stone board))
 
 -- | Проверка на правила игры
 isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
@@ -222,10 +217,10 @@ ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1)
                                                  cmpFieldWithEmpty point_row (point_col+1) board
 
 
-cmpFieldWithEmpty:: Int->Int->Board->Bool
+cmpFieldWithEmpty:: Int -> Int -> Board -> Bool
 cmpFieldWithEmpty point_row point_col board
-        | point_row < 0 || point_row > boardHeight ||
-          point_col < 0 || point_col > boardWidth = False
+        | point_row < 0 || (point_row > boardHeight - 1) ||
+          point_col < 0 || (point_col > boardWidth - 1) = False
         | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty)
 
 
