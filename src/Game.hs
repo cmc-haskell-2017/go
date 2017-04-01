@@ -216,31 +216,17 @@ equalBoards = byKey 0 0
 --
 -- | правило свободы
 ruleFreedom :: Point2 -> Stone -> Board -> Bool
-ruleFreedom (point_row, point_col) stone board
-  |point_row > 0 && point_row < boardHeight &&
-   point_col > 0 && point_col < boardWidth = cmpFieldWithEmpty (point_row-1) point_col board ||
-                                             cmpFieldWithEmpty (point_row+1) point_col board ||
-                                             cmpFieldWithEmpty point_row (point_col-1) board ||
-                                             cmpFieldWithEmpty point_row (point_col+1) board
-  |point_row > 0 && point_row < boardHeight &&
-                            point_col == 0 = cmpFieldWithEmpty (point_row-1) point_col board ||
-                                             cmpFieldWithEmpty (point_row+1) point_col board ||
-                                             cmpFieldWithEmpty point_row (point_col+1) board
-  |point_row > 0 && point_row < boardHeight &&
-                   point_col == boardWidth = cmpFieldWithEmpty (point_row-1) point_col board ||
-                                             cmpFieldWithEmpty (point_row+1) point_col board ||
-                                             cmpFieldWithEmpty point_row (point_col-1) board
-  |point_col > 0 && point_row < boardWidth &&
-                            point_row == 0 = cmpFieldWithEmpty (point_row+1) point_col board ||
-                                             cmpFieldWithEmpty point_row (point_col-1) board ||
-                                             cmpFieldWithEmpty point_row (point_col+1) board
-  |point_col > 0 && point_row < boardWidth &&
-                  point_row == boardHeight = cmpFieldWithEmpty (point_row-1) point_col board ||
-                                             cmpFieldWithEmpty point_row (point_col+1) board ||
-                                             cmpFieldWithEmpty point_row (point_col-1) board
+ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1) point_col board ||
+                                                 cmpFieldWithEmpty (point_row+1) point_col board ||
+                                                 cmpFieldWithEmpty point_row (point_col-1) board ||
+                                                 cmpFieldWithEmpty point_row (point_col+1) board
+
 
 cmpFieldWithEmpty:: Int->Int->Board->Bool
-cmpFieldWithEmpty point_row point_col board = (Map.lookup (point_row, point_col) board) == (Just Empty)
+cmpFieldWithEmpty point_row point_col board
+        | point_row < 0 || point_row > boardHeight ||
+          point_col < 0 || point_col > boardWidth = False
+        | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty)
 
 
 -- | занято ли место
