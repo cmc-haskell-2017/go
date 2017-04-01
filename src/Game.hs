@@ -49,15 +49,6 @@ type Point2 = (Int, Int)
 -- | Игровое поле
 type Board = Map Point2 Cell
 
--- | кол-во камней, которые "съели" черные
-type Blacksum = Int
-
--- | кол-во камней, которые "съели" белые
-type Whitesum = Int
-
--- | кол-во камней убранных каждым игроком
-type AmountStones = (Blacksum, Whitesum)
-
 -- | состоние поля, мне кажется оно должно быть таким
 data Game = Game
   { gamePlayer :: Stone -- чей ход
@@ -66,7 +57,6 @@ data Game = Game
   , gameWinner :: Maybe Stone -- победитель?!
   , gameBoard :: Board
   , listBoard :: [Board] -- список всех предыдущих состояний
-  , scoreStones :: AmountStones -- кол-во камней убранных каждым игроком
   }
 
 -- | Начальное состояние игры.
@@ -80,21 +70,20 @@ initGame = Game
   , gameWinner = Nothing
   , gameBoard  = initBoard
   , listBoard = []
-  , scoreStones = (0, 0)
   }
 
 -- | Построение пустого поля/ траблы
 initBoard :: Board
 initBoard  = Map.fromAscList(createList)
 
-createList:: [(Point2, Cell)]
+createList::[(Point2, Cell)]
 createList = createListadd 0 0
 
-createListadd:: Int -> Int -> [(Point2, Cell)]
+createListadd:: Int->Int->[(Point2, Cell)]
 createListadd i1 i2
-  |i2 < boardWidth = ((i1,i2), Empty) : createListadd i1 (i2 + 1)
-  |i1 < boardHeight - 1 = createListadd (i1 + 1) 0
-  |otherwise = []
+  |i2 < boardWidth - 1 = ((i1,i2), Empty) : createListadd i1 (i2+1)
+	|i1 < boardHeight - 1 = ((i1,i2), Empty) : createListadd (i1+1) 0
+	|otherwise = []
 
 -- =========================================
 -- Отрисовка игры
@@ -140,13 +129,13 @@ drawStone White = drawWhite
 
 -- | Нарисовать черный камень.
 drawBlack :: Picture
-drawBlack = color black (circleSolid radiusStone)
+drawBlack = color black (thickCircle 0 1)
 
 -- | Нарисовать белый камень.
 drawWhite :: Picture
 drawWhite = pictures
-  [color white (circleSolid radiusStone)
-  , color black (circle radiusStone)
+  [color white (thickCircle 0 0.9)
+  , color black (circle 0.45)
   ]
 
 
@@ -159,30 +148,22 @@ handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
 handleGame _ = id
 
--- | Получить координаты клетки под мышкой.
-mouseToCell :: Point -> Maybe Point2
-mouseToCell (x, y) = (Just (i, j))
-  where
-    i = floor (x + fromIntegral screenWidth  / 2) `div` cellSize
-    j = floor (y + fromIntegral screenHeight / 2) `div` cellSize
 
 -- | Поставить камень и сменить игрока (если возможно).
-placeStone :: Maybe Point2 -> Game -> Game
-placeStone Nothing game = game
-placeStone (Just point) game =
-    case gameWinner game of
-      Just _ -> game    -- если есть победитель, то поставить фишку нельзя
-      Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
-        Nothing -> game -- если поставить фишку нельзя, ничего не изменится
-        Just newBoard -> game
-          { gamePlayer = switchPlayer (gamePlayer game)
-          , gameScore = amountScores newBoard
-          , gameComi = gameComi game
-          , gameWinner = winner game
-          , gameBoard  = newBoard
-          , listBoard = (gameBoard game) : (listBoard game)
-          , scoreStones = (0, 0)
-          }
+placeStone :: Point2 -> Game -> Game -- fix
+placeStone point game =
+  case gameWinner game of
+    Just _ -> game    -- если есть победитель, то поставить фишку нельзя
+    Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
+      Nothing -> game -- если поставить фишку нельзя, ничего не изменится
+      Just newBoard -> game
+        { gamePlayer = switchPlayer (gamePlayer game)
+        , gameScore = amountScores newBoard
+        , gameComi = gameComi game
+        , gameWinner = winner game
+        , gameBoard  = newBoard
+        , listBoard = (gameBoard game) : (listBoard game)
+        }
 
 -- | Применить преобразование к элементу map
 -- с заданным ключом. Если преобразование не удалось — вернуть 'Nothing'.
@@ -196,8 +177,9 @@ modifyAt point board stone boards
 
 -- | Проверка на правила игры
 isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
-isPossible point board _ _ -- два последних параметра нам не нужны, пока не доделали все функции правил
+isPossible point board stone _ -- два последних параметра нам не нужны, пока не доделали все функции правил
   | ruleBusy point board = False
+  | ruleFreedom point stone board == False = False
   | otherwise = True
 
 -- | функция равенства досок
@@ -217,6 +199,40 @@ equalBoards = byKey 0 0
 -- | правило свободы
 -- ruleFreedom :: Point2 -> Stone -> Board -> Bool
 
+ruleFreedom :: Point2 -> Stone -> Board -> Bool
+ruleFreedom (point_row, point_col) stone board
+  |point_row > 0 && point_row < boardHeight &&
+   point_col > 0 && point_col < boardWidth = cmpFieldWithEmpty (point_row-1) point_col board ||
+                                             cmpFieldWithEmpty (point_row+1) point_col board ||
+                                             cmpFieldWithEmpty point_row (point_col-1) board ||
+                                             cmpFieldWithEmpty point_row (point_col+1) board
+  |point_row > 0 && point_row < boardHeight &&
+                            point_col == 0 = cmpFieldWithEmpty (point_row-1) point_col board ||
+                                             cmpFieldWithEmpty (point_row+1) point_col board ||
+                                             cmpFieldWithEmpty point_row (point_col+1) board
+  |point_row > 0 && point_row < boardHeight &&
+                   point_col == boardWidth = cmpFieldWithEmpty (point_row-1) point_col board ||
+                                             cmpFieldWithEmpty (point_row+1) point_col board ||
+                                             cmpFieldWithEmpty point_row (point_col-1) board
+  |point_col > 0 && point_row < boardWidth &&
+                            point_row == 0 = cmpFieldWithEmpty (point_row+1) point_col board ||
+                                             cmpFieldWithEmpty point_row (point_col-1) board ||
+                                             cmpFieldWithEmpty point_row (point_col+1) board
+  |point_col > 0 && point_row < boardWidth &&
+                  point_row == boardHeight = cmpFieldWithEmpty (point_row-1) point_col board ||
+                                             cmpFieldWithEmpty point_row (point_col+1) board ||
+                                             cmpFieldWithEmpty point_row (point_col-1) board
+
+cmpFieldWithEmpty:: Int->Int->Board->Bool
+cmpFieldWithEmpty point_row point_col board = (Map.lookup (point_row, point_col) board) == (Just Empty)
+
+-- | удаление мертвых камней при окончании игры
+-- Например, когда игра закончилась(оба игрока с пасовали), то остались группы камней,
+-- у которых еще есть свобода, но при этом они считаются мертвыми, потому что
+-- другой игрок может убрать их за пару ходов. Если у этих камней есть возможность поставить два глаза,
+-- то они не могут быть убраны.
+--removeDead :: Game -> Game
+
 -- | занято ли место
 ruleBusy :: Point2 -> Board -> Bool
 ruleBusy p board
@@ -226,13 +242,6 @@ ruleBusy p board
 -- | убрать камни без свободы и засчитать другому игроку столько очков,
 -- сколько было убрано камней
 -- removeStones :: Stone -> Game -> Game
-
--- | удаление мертвых камней при окончании игры
--- Например, когда игра закончилась(оба игрока с пасовали), то остались группы камней,
--- у которых еще есть свобода, но при этом они считаются мертвыми, потому что
--- другой игрок может убрать их за пару ходов. Если у этих камней есть возможность поставить два глаза,
--- то они не могут быть убраны.
---removeDead :: Game -> Game
 
 -- | поставить камень
 place :: Point2 -> Stone -> Board -> Board
@@ -250,9 +259,18 @@ switchPlayer White = Black
 amountScores :: Board -> Scores
 amountScores _ = (0.0, 0.0)
 
+
+-- | Получить координаты клетки под мышкой.
+mouseToCell :: Point -> Point2
+mouseToCell (x, y) = (i, j)
+  where
+    i = floor (x + fromIntegral screenWidth  / 2) `div` cellSize
+    j = floor (y + fromIntegral screenHeight / 2) `div` cellSize
+
 -- | Определить победителя на игровом поле
 winner :: Game -> Maybe Stone
 winner _ = Nothing
+
 
 -- | Обновление игры.
 -- В этой игре все изменения происходят только по действиям игрока,
@@ -264,19 +282,15 @@ updateGame _ = id
 -- Константы, параметры игры.
 -- =========================================
 
--- | радиус картинки камня
-radiusStone :: Float
-radiusStone = 0.45
-
 -- | Начальная фора(очки) белого игрока
--- может варьироваться уже по желания, но это позже в индивидуальных частях
+-- надо уточнить отрезок возмодных значений
 playerComi :: Float
-playerComi = 6.5
+playerComi = 5.5
 
 -- | начальная фора(камни) черного игрока, надо подумать как это реализовать
 -- обозначает, сколько камней должен поставит черный игрок перед началом партии
 -- это нужно если очковой форы не хватает и игроки слишком разного уровня
--- но не более 9(для доски 19x19), для 9x9 будет не больше 3
+-- но не более определенного кол-ва камней, уточним потом в правилах
 playerHandicap :: Int
 playerHandicap = 0
 
@@ -294,7 +308,7 @@ cellSize = 50
 
 -- | отступы от края экрана
 screenOffset :: Int
-screenOffset = 50
+screenOffset = 40
 
 -- | Ширина экрана в пикселях.
 screenWidth :: Int
