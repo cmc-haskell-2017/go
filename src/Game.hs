@@ -229,20 +229,36 @@ ammEqBoards board (x:xs) a | equalBoards board x == True = ammEqBoards board xs 
 
 --
 -- | правило свободы
+
 ruleFreedom :: Point2 -> Stone -> Board -> Bool
-ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1) point_col board ||
-                                                 cmpFieldWithEmpty (point_row+1) point_col board ||
-                                                 cmpFieldWithEmpty point_row (point_col-1) board ||
-                                                 cmpFieldWithEmpty point_row (point_col+1) board
+ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1) point_col board stone ||
+                                                 cmpFieldWithEmpty (point_row+1) point_col board stone ||
+                                                 cmpFieldWithEmpty point_row (point_col-1) board stone ||
+                                                 cmpFieldWithEmpty point_row (point_col+1) board stone
 
+cmpFieldWithEmpty:: Int->Int->Board->Stone->Bool
+cmpFieldWithEmpty point_row point_col board stone
+        | borderCmp point_row point_col = False
+        | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty) ||
+                      (noLastFree point_row point_col board stone [] > 1)
+                      --(amountElementInList (noLastFree point_row point_col board stone [(point_row,point_col)]) > 1)
 
-cmpFieldWithEmpty:: Int -> Int -> Board -> Bool
-cmpFieldWithEmpty point_row point_col board
-        | point_row < 0 || (point_row > boardHeight - 1) ||
-          point_col < 0 || (point_col > boardWidth - 1) = False
-        | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty)
+noLastFree::Int->Int->Board->Stone->[(Int,Int)]->Int
+noLastFree row col board stone list
+  | borderCmp row col = 0
+  | (filter (\(x,y)->x==row && y==col) list) /= [] = 0
+  | (Map.lookup (row, col) board) == (Just Empty) = 1
+  | (Map.lookup (row, col) board) == (Just (Cell stone)) = noLastFree (row - 1) col board stone ((row,col) : list) +
+                                                           noLastFree (row + 1) col board stone ((row,col) : list) +
+                                                           noLastFree row (col - 1) board stone ((row,col) : list) +
+                                                           noLastFree row (col + 1) board stone ((row,col) : list)
+  | otherwise = 0
 
-
+borderCmp::Int->Int->Bool
+borderCmp point_row point_col = point_row < 0 ||
+                                point_row > boardHeight ||
+                                point_col < 0 ||
+                                point_col > boardWidth
 -- | занято ли место
 ruleBusy :: Point2 -> Board -> Bool
 ruleBusy p board
