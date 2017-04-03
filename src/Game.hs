@@ -86,7 +86,7 @@ initGame = Game
 initBoard :: Board
 initBoard  = Map.fromAscList(createList)
 
--- | начало поле с токи (0, 0)
+-- | начало поля с точки (0, 0)
 createList:: [(Point2, Cell)]
 createList = createListadd 0 0
 
