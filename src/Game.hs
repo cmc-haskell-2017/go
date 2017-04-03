@@ -82,13 +82,15 @@ initGame = Game
   , scoreStones = (0, 0)
   }
 
--- | Построение пустого поля/ траблы
+-- | Построение пустого поля
 initBoard :: Board
 initBoard  = Map.fromAscList(createList)
 
+-- | начало поле с токи (0, 0)
 createList:: [(Point2, Cell)]
 createList = createListadd 0 0
 
+-- | идет рекурсивно по столбцам и строкам и заполняет список пустыми клетками
 createListadd:: Int -> Int -> [(Point2, Cell)]
 createListadd i1 i2
   |i2 < boardWidth = ((i1,i2), Empty) : createListadd i1 (i2 + 1)
@@ -99,6 +101,7 @@ createListadd i1 i2
 -- Отрисовка игры
 -- =========================================
 
+-- | Отрисовка игры, складывает изображения сетки и поля.
 drawGame :: Game -> Picture
 drawGame game = translate (-w) (-h) (scale c c (pictures
   [ drawGrid
@@ -110,7 +113,7 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
     h = fromIntegral screenHeight / 2 - offset
     offset = fromIntegral screenOffset / 2
 
--- | Сетка игрового поля.
+-- | Ортисовка сетки игрового поля.
 drawGrid :: Picture
 drawGrid = color black (pictures (hs ++ vs))
   where
@@ -120,7 +123,7 @@ drawGrid = color black (pictures (hs ++ vs))
     n = fromIntegral boardWidth
     m = fromIntegral boardHeight
 
--- | Нарисовать фишки на игровом поле/ протестировать, подогнать параметры
+-- | Нарисовать фишки на игровом поле
 drawBoard :: Board -> Picture
 drawBoard board = pictures (map drawCells (Map.toList board))
   where
@@ -140,7 +143,7 @@ drawStone White = drawWhite
 drawBlack :: Picture
 drawBlack = color black (circleSolid radiusStone)
 
--- | Нарисовать белый камень.
+-- | Нарисовать белый камень, с черной каймой.
 drawWhite :: Picture
 drawWhite = pictures
   [color white (circleSolid radiusStone)
@@ -156,7 +159,7 @@ handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
 handleGame _ = id
 
--- | Получить координаты клетки под мышкой.
+-- | Получить координаты клетки под мышкой(потом будет распознование близости мышки с пересечением сетки)
 mouseToCell :: Point -> Maybe Point2
 mouseToCell (x, y) = (Just (i, j))
   where
@@ -191,11 +194,13 @@ modifyAt point board stone boards
 
 -- | Проверка на правила игры
 isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
-isPossible point board _ _ -- два последних параметра нам не нужны, пока не доделали все функции правил
+isPossible point board stone listBoard -- два последних параметра нам не нужны, пока не доделали все функции правил
   | ruleBusy point board = False
+  -- | ruleKo point stone board listBoard = True
+  | ruleFreedom point stone board = True
   | otherwise = True
 
--- | функция равенства досок
+-- | функция равенства досок, true если равны
 equalBoards :: Board -> Board -> Bool
 equalBoards = byKey 0 0
   where
@@ -215,9 +220,11 @@ equalBoards = byKey 0 0
 --      | ammEqBoards (place point stone board) boards 0 == 0 = True
 --      | otherwise = False
 
-ruleKo :: Point2 -> Stone -> Board -> [Board] -> Bool -- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
+-- | правило Ко борьбы, true если что?(к Марина)
+-- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
+ruleKo :: Point2 -> Stone -> Board -> [Board] -> Bool
 ruleKo point stone board boards
-      | (ammEqBoards board boards 0 < 3) && 
+      | (ammEqBoards board boards 0 < 3) &&
         (equalBoards (place point stone board) (head boards)) == False = True
       | otherwise = False
 
@@ -259,7 +266,7 @@ borderCmp point_row point_col = point_row < 0 ||
                                 point_row > boardHeight ||
                                 point_col < 0 ||
                                 point_col > boardWidth
--- | занято ли место
+-- | занято ли место, false если не занято
 ruleBusy :: Point2 -> Board -> Bool
 ruleBusy p board
   | Map.lookup p board == (Just Empty) = False
