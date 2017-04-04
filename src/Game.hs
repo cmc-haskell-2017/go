@@ -33,7 +33,7 @@ data Stone = Black | White
   deriving(Eq, Show)
 
 -- | Клетка поля, но это не точно
-data Cell = Cell Stone | Empty -- переделать под Etheir
+data Cell = Cell Stone | CellShadow Stone | Empty -- переделать под Etheir
   deriving(Eq, Show)
 
 -- | Количество очков для одного игрока
@@ -133,15 +133,33 @@ drawBoard board = pictures (map drawCells (Map.toList board))
 drawCell :: Cell -> Picture
 drawCell Empty = blank
 drawCell (Cell stone) = drawStone stone
+drawCell (CellShadow stone) = drawShadowStone stone
 
 -- | Нарисовать камень.
 drawStone:: Stone -> Picture
 drawStone Black = drawBlack
 drawStone White = drawWhite
 
+drawShadowStone :: Stone -> Picture
+drawShadowStone Black = drawShadowBlack
+drawShadowStone White = drawShadowWhite
+
+drawShadowBlack :: Picture
+drawShadowBlack =  color (withAlpha 0.5 black) (circleSolid radiusStone)
+
+drawShadowWhite :: Picture
+drawShadowWhite = pictures
+  [color (withAlpha 0.5 white) (circleSolid radiusStone)
+  , color (withAlpha 0.5 black) (circle radiusStone)
+  ]
+
+
+
 -- | Нарисовать черный камень.
 drawBlack :: Picture
 drawBlack = color black (circleSolid radiusStone)
+
+
 
 -- | Нарисовать белый камень, с черной каймой.
 drawWhite :: Picture
@@ -157,7 +175,19 @@ drawWhite = pictures
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
+handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
 handleGame _ = id
+
+
+
+placeShadowStone :: Maybe Point2 -> Game -> Game
+placeShadowStone Nothing game = game
+placeShadowStone (Just point) game
+  | ruleBusy point (gameBoard game) = game
+  |otherwise = game {gameBoard = Map.insert point (CellShadow ( gamePlayer game)) (deleteShadows (gameBoard game)) }
+
+deleteShadows :: Board -> Board
+deleteShadows board = (Map.fromList (map (\(p,a) -> if ((a == (CellShadow Black)) || (a == (CellShadow White))) then (p,Empty) else (p,a)) (Map.toList board)))
 
 -- | Получить координаты клетки под мышкой(потом будет распознование близости мышки с пересечением сетки)
 mouseToCell :: Point -> Maybe Point2
@@ -274,7 +304,7 @@ borderCmp point_row point_col = point_row < 0 ||
 -- | занято ли место, false если не занято
 ruleBusy :: Point2 -> Board -> Bool
 ruleBusy p board
-  | Map.lookup p board == (Just Empty) = False
+  | Map.lookup p board == (Just Empty) || Map.lookup p board == (Just (CellShadow Black)) || Map.lookup p board == (Just (CellShadow White)) = False
   | otherwise = True
 
 -- | убрать камни без свободы и засчитать другому игроку столько очков,
@@ -329,6 +359,7 @@ countStones (x , y) ((_ , a) : xs)
 -- и True в противном случае
 isFreedom :: Point2 -> Cell -> Board -> Bool
 isFreedom _ Empty _ = True
+isFreedom _ (CellShadow _) _ = True
 isFreedom (x,y) (Cell stone) board
   | (x > screenWidth - 1) || (y > screenHeight - 1) || (x < 0) || (y < 0) = False
   | (Map.lookup (x+1,y) board) == (Just Empty) ||
