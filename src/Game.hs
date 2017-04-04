@@ -273,26 +273,24 @@ ruleBusy p board
 -- | убрать камни без свободы и засчитать другому игроку столько очков,
 -- сколько было убрано камней
 removeStones :: Game -> Game
-removeStones game =
-	Game
-	{
-		gamePlayer = gamePlayer game
-          , gameScore = gameScore game
-          , gameComi = gameComi game
-          , gameWinner = gameWinner game
-          , gameBoard  = (deleteFromBoard (listOfStones (Map.toList (gameBoard game)) (gameBoard game)) (gameBoard game))
-          , listBoard = listBoard game
-          , scoreStones = countStones (scoreStones game) (listOfStones (Map.toList (gameBoard game)) (gameBoard game))
-
+removeStones game = Game
+	{ gamePlayer = gamePlayer game
+  , gameScore = gameScore game
+  , gameComi = gameComi game
+  , gameWinner = gameWinner game
+  , gameBoard  = (deleteFromBoard (listOfStones (Map.toList (gameBoard game)) (gameBoard game)) (gameBoard game))
+  -- , gameBoard  = (deleteFromBoard [((0,0), (Cell Black)), ((1,0), (Cell Black))] (gameBoard game))
+  , listBoard = listBoard game
+  , scoreStones = countStones (scoreStones game) (listOfStones (Map.toList (gameBoard game)) (gameBoard game))
 	}
-
+-- написать where для listOfStones
 
 -- Возвращает список камней которые, необходимо удалить
 listOfStones :: [(Point2, Cell)] -> Board -> [(Point2, Cell)]
 listOfStones [] board = []
-listOfStones (((x , y), a):xs) board 
+listOfStones (((x , y), a):xs) board
 	| isFreedom (x,y) a board = listOfStones xs board
-	| otherwise = ((x,y),a): listOfStones xs board
+	| otherwise = ((x , y), a) : listOfStones xs board
 
 -- Удаляет камни из списка с доски
 deleteFromBoard :: [(Point2, Cell)] -> Board -> Board
@@ -302,28 +300,37 @@ deleteFromBoard (((x,y),a):xs) board = deleteFromBoard xs (Map.insert (x,y) Empt
  --Считает количество убранных камней для обоих игроков
 countStones :: Point2 -> [(Point2, Cell)] -> Point2
 countStones a [] = a
-countStones (x,y) (((k,l),a):xs) 
+countStones (x,y) (((k,l),a):xs)
 	| a == Cell Black = countStones (x+1,y) xs
 	| otherwise = countStones (x,y+1) xs
 
 -- Возвращает список соседей для камня, у которых их цвет совпадает с цветом камня
 neighboursByColor :: Point2 -> Cell -> Board -> [(Point2,Cell)]
-neighboursByColor  (x,y) cell board =
-	 filter (\((k,l),a) -> ((x == k) &&((l == y-1) || (l == y+1))) ||((y == l) && ((l == x-1)|| (l == x+1))) && (a == cell)) (Map.toList board)
+neighboursByColor  (x,y) cell board = map fix (filter (\(point, a) -> a == (Just cell) ) [((x + 1, y), Map.lookup (x + 1, y) board)
+  , ((x - 1, y), Map.lookup (x - 1, y) board)
+  , ((x, y + 1), Map.lookup (x, y + 1) board)
+  , ((x, y - 1), Map.lookup (x, y - 1) board)
+  ])
+    where
+      fix (point, (Just cell)) = (point, cell)
+
+	--  filter (\((k , l), a) -> ((x == k) && ((l == y-1) || (l == y+1))) || ((y == l) && ((l == x-1) || (l == x+1))) && (a == cell)) (Map.toList board)
+   -- надо проверять только 4 элемента, не весь список
 
 
 -- Функция которая возвращает False, если у камня и его соседей нет степени свободы,
 -- и True в противном случае
-
 isFreedom :: Point2 -> Cell -> Board -> Bool
-isFreedom (x,y) cell board 
-		| (x > screenWidth-1) || (y > screenHeight-1) || (x<0) ||(y<0) = False
-		|   (Map.lookup (x+1,y) board) == (Just Empty) ||
+isFreedom (x,y) cell board
+		| (x > screenWidth - 1) || (y > screenHeight - 1) || (x < 0) || (y < 0) = False
+		| (Map.lookup (x+1,y) board) == (Just Empty) ||
 			(Map.lookup (x-1,y) board) == (Just Empty) ||
 			(Map.lookup (x,y-1) board) == (Just Empty) ||
-			(Map.lookup (x,y+1) board) == (Just Empty) 
-						=True
-		|otherwise = foldr (||) False (map (\((k,l),a) -> if (isFreedom (k,l) a board) ==True then True else False) (neighboursByColor (x,y) cell board))
+			(Map.lookup (x,y+1) board) == (Just Empty)
+						= True
+		|otherwise = foldr (||) False (map (\((k,l),a) -> if (isFreedom (k,l) a board) == True then True else False) (neighboursByColor (x,y) cell board) )
+    -- можно без if
+    -- | otherwise = False
 
 
 
