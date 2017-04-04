@@ -192,12 +192,12 @@ modifyAt point board stone boards
   | isPossible point board stone boards = (Just (place point stone board))
   | otherwise = Nothing
 
--- | Проверка на правила игры
+-- | Проверка на правила игры, false если не по правилам.
 isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
-isPossible point board stone listBoard -- два последних параметра нам не нужны, пока не доделали все функции правил
+isPossible point board stone listBoard
   | ruleBusy point board = False
   -- | ruleKo point stone board listBoard = True
-  | ruleFreedom point stone board = True
+  | (not (ruleFreedom point stone board)) = False
   | otherwise = True
 
 -- | функция равенства досок, true если равны
@@ -234,9 +234,7 @@ ammEqBoards _ [] a = a
 ammEqBoards board (x:xs) a | equalBoards board x == True = ammEqBoards board xs a+1
                            | otherwise = ammEqBoards board xs a
 
---
 -- | правило свободы
-
 ruleFreedom :: Point2 -> Stone -> Board -> Bool
 ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1) point_col board stone ||
                                                  cmpFieldWithEmpty (point_row+1) point_col board stone ||
