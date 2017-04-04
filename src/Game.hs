@@ -197,8 +197,8 @@ isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
 isPossible point board stone listBoard
   | ruleBusy point board = False
   -- | ruleKo point stone board listBoard = True
-  | (not (ruleFreedom point stone board)) = False
   | otherwise = True
+  | (not (ruleFreedom point stone board)) = False
 
 -- | функция равенства досок, true если равны
 equalBoards :: Board -> Board -> Bool
@@ -235,20 +235,21 @@ ammEqBoards board (x:xs) a | equalBoards board x == True = ammEqBoards board xs 
                            | otherwise = ammEqBoards board xs a
 
 -- | правило свободы
-ruleFreedom :: Point2 -> Stone -> Board -> Bool
+ruleFreedom :: Point2 -> Stone -> Board -> Bool -- | Возвращает True, если все ок (можно ставить камень)
+
 ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1) point_col board stone ||
                                                  cmpFieldWithEmpty (point_row+1) point_col board stone ||
                                                  cmpFieldWithEmpty point_row (point_col-1) board stone ||
                                                  cmpFieldWithEmpty point_row (point_col+1) board stone
 
-cmpFieldWithEmpty:: Int->Int->Board->Stone->Bool
+cmpFieldWithEmpty:: Int->Int->Board->Stone->Bool -- | Возвращает True если правило свободы выполненно для данного соседа
 cmpFieldWithEmpty point_row point_col board stone
         | borderCmp point_row point_col = False
         | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty) ||
                       (noLastFree point_row point_col board stone [] > 1)
                       --(amountElementInList (noLastFree point_row point_col board stone [(point_row,point_col)]) > 1)
 
-noLastFree::Int->Int->Board->Stone->[(Int,Int)]->Int
+noLastFree::Int->Int->Board->Stone->[(Int,Int)]->Int -- | Возвращает количество степеней свободы группы камней
 noLastFree row col board stone list
   | borderCmp row col = 0
   | (filter (\(x,y)->x==row && y==col) list) /= [] = 0
@@ -259,7 +260,7 @@ noLastFree row col board stone list
                                                            noLastFree row (col + 1) board stone ((row,col) : list)
   | otherwise = 0
 
-borderCmp::Int->Int->Bool
+borderCmp::Int->Int->Bool -- | Возвращает True если вышли за границы поля
 borderCmp point_row point_col = point_row < 0 ||
                                 point_row > boardHeight ||
                                 point_col < 0 ||
