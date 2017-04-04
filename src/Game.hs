@@ -174,7 +174,7 @@ placeStone (Just point) game =
       Just _ -> game    -- если есть победитель, то поставить фишку нельзя
       Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
         Nothing -> game -- если поставить фишку нельзя, ничего не изменится
-        Just newBoard -> game
+        Just newBoard -> removeStones game
           { gamePlayer = switchPlayer (gamePlayer game)
           , gameScore = amountScores newBoard
           , gameComi = gameComi game
@@ -196,7 +196,7 @@ modifyAt point board stone boards
 isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
 isPossible point board stone listBoard
   | ruleBusy point board = False
-  | ruleKo point stone board listBoard = False
+  | (not (ruleKo point stone board listBoard)) = False
   | (not (ruleFreedom point stone board)) = False
   | otherwise = True
 
@@ -223,9 +223,9 @@ equalBoards = byKey 0 0
 -- | правило Ко борьбы, true если что?(к Марина)
 -- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
 ruleKo :: Point2 -> Stone -> Board -> [Board] -> Bool
-ruleKo point stone board boards
-      | (ammEqBoards board boards 0 < 3) &&
-        (equalBoards (place point stone board) (head boards)) == False = True
+ruleKo point stone board (x:xs)
+      -- | (ammEqBoards board (x:xs) 0 < 3) &&
+      --   (equalBoards (place point stone board) x) == False = True
       | otherwise = False
 
 -- | Сколько раз встречалась такая доска раньше
@@ -235,12 +235,14 @@ ammEqBoards board (x:xs) a | equalBoards board x == True = ammEqBoards board xs 
                            | otherwise = ammEqBoards board xs a
 
 -- | правило свободы
+-- | Возвращает True, если все ок (можно ставить камень)
 ruleFreedom :: Point2 -> Stone -> Board -> Bool
 ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1) point_col board stone ||
                                                  cmpFieldWithEmpty (point_row+1) point_col board stone ||
                                                  cmpFieldWithEmpty point_row (point_col-1) board stone ||
                                                  cmpFieldWithEmpty point_row (point_col+1) board stone
 
+-- | Возвращает True если правило свободы выполненно для данного соседа
 cmpFieldWithEmpty:: Int->Int->Board->Stone->Bool
 cmpFieldWithEmpty point_row point_col board stone
         | borderCmp point_row point_col = False
@@ -248,6 +250,7 @@ cmpFieldWithEmpty point_row point_col board stone
                       (noLastFree point_row point_col board stone [] > 1)
                       --(amountElementInList (noLastFree point_row point_col board stone [(point_row,point_col)]) > 1)
 
+-- | Возвращает количество степеней свободы группы камней
 noLastFree::Int->Int->Board->Stone->[(Int,Int)]->Int
 noLastFree row col board stone list
   | borderCmp row col = 0
@@ -259,11 +262,14 @@ noLastFree row col board stone list
                                                            noLastFree row (col + 1) board stone ((row,col) : list)
   | otherwise = 0
 
+
+  -- | Возвращает True если вышли за границы поля
 borderCmp::Int->Int->Bool
 borderCmp point_row point_col = point_row < 0 ||
                                 point_row > boardHeight ||
                                 point_col < 0 ||
                                 point_col > boardWidth
+
 -- | занято ли место, false если не занято
 ruleBusy :: Point2 -> Board -> Bool
 ruleBusy p board
