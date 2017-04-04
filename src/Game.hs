@@ -196,7 +196,7 @@ modifyAt point board stone boards
 isPossible :: Point2 -> Board -> Stone -> [Board] -> Bool
 isPossible point board stone listboard
   | ruleBusy point board = False
-  | (not (ruleKo point stone board listBoard)) = False
+  | (not (ruleKo point stone board listboard)) = False
   | (not (ruleFreedom point stone board)) = False
   | otherwise = True
 
