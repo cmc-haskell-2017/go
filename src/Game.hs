@@ -198,7 +198,7 @@ isPossible point board stone listBoard -- два последних параме
   | ruleBusy point board = False
   -- | ruleKo point stone board listBoard = True
   | ruleFreedom point stone board = True
-  | otherwise = True
+  | otherwise = False
 
 -- | функция равенства досок, true если равны
 equalBoards :: Board -> Board -> Bool
