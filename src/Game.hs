@@ -213,7 +213,7 @@ placeStone (Just point) game =
       Just _ -> game    -- если есть победитель, то поставить фишку нельзя
       Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
         Nothing -> game -- если поставить фишку нельзя, ничего не изменится
-        Just newBoard -> removeStones  (complateMove newBoard game)
+        Just newBoard -> removeStones  (completeMove newBoard game)
 
 -- |
 complateMove :: Board -> Game -> Game
