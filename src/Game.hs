@@ -110,7 +110,7 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
   , drawBoard (gameBoard game)
   ]))
   where
-    c = fromIntegral cellSize
+    c = fromIntegral (sizeCell game)
     w = fromIntegral screenWidth  / 2 - offset
     h = fromIntegral screenHeight / 2 - offset
     offset = fromIntegral screenOffset / 2
@@ -176,6 +176,17 @@ handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCe
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
 handleGame _ = id
 
+-- | изменить размер доски при увеличении размера окна
+resizeBoard :: (Int, Int) -> Game -> Game
+resizeBoard (x, y) game = game
+  { gamePlayer = gamePlayer game
+  , gameScore = gameScore game
+  , gameComi = gameComi game
+  , gameWinner = gameWinner game
+  , gameBoard  = gameBoard game
+  , listBoard = listBoard game
+  , sizeCell = 10
+  }
 
 
 placeShadowStone :: Maybe Point2 -> Game -> Game
