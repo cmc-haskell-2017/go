@@ -1,4 +1,6 @@
 module Game  where
+import Data.Monoid
+import Data.Foldable
 
 import Graphics.Gloss.Interface.Pure.Game
 import Data.Map (Map)
@@ -125,7 +127,7 @@ drawGrid = color black (pictures (hs ++ vs))
 
 -- | Нарисовать фишки на игровом поле
 drawBoard :: Board -> Picture
-drawBoard board = pictures (map drawCells (Map.toList board))
+drawBoard board = foldMap drawCells (Map.toList board)
   where
     drawCells ((x, y), cell) = translate (fromIntegral x) (fromIntegral y) (drawCell cell)
 
@@ -153,13 +155,9 @@ drawShadowWhite = pictures
   , color (withAlpha 0.5 black) (circle radiusStone)
   ]
 
-
-
 -- | Нарисовать черный камень.
 drawBlack :: Picture
 drawBlack = color black (circleSolid radiusStone)
-
-
 
 -- | Нарисовать белый камень, с черной каймой.
 drawWhite :: Picture
@@ -204,15 +202,22 @@ placeStone (Just point) game =
       Just _ -> game    -- если есть победитель, то поставить фишку нельзя
       Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
         Nothing -> game -- если поставить фишку нельзя, ничего не изменится
-        Just newBoard -> removeStones game
-          { gamePlayer = switchPlayer (gamePlayer game)
-          , gameScore = amountScores newBoard
-          , gameComi = gameComi game
-          , gameWinner = winner game
-          , gameBoard  = newBoard
-          , listBoard = (gameBoard game) : (listBoard game)
-          , scoreStones = (0, 0)
-          }
+        Just newBoard -> removeStones  (complateMove newBoard game)
+
+-- |
+complateMove :: Board -> Game -> Game
+complateMove board game = game
+  { gamePlayer = switchPlayer (gamePlayer game)
+  , gameScore = amountScores board
+  , gameWinner = winner game
+  , gameBoard  = board
+  , listBoard = setBoard board (listBoard game)
+  }
+
+--
+setBoard :: Board -> [Board] -> [Board]
+setBoard board listboard = board : listboard
+
 
 -- | Применить преобразование к элементу map
 -- с заданным ключом. Если преобразование не удалось — вернуть 'Nothing'.
