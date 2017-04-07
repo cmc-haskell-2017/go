@@ -237,36 +237,18 @@ isPossible point board stone listboard
   | (not (ruleFreedom point stone board)) = False
   | otherwise = True
 
--- | Функция равенства досок, true если равны.
-equalBoards :: Board -> Board -> Bool
-equalBoards = byKey 0 0
-  where
-    byKey i1 i2 a b
-      | i2 < boardWidth =
-        (Map.lookup (i1, i2) a) == (Map.lookup (i1, i2) b) && byKey i1 (i2+1) a b
-      | i1 < boardHeight =
-        (Map.lookup (i1, i2) a) == (Map.lookup (i1, i2) b) && byKey (i1+1) 0 a b
-      | otherwise = True
-
---ruleKo :: Node -> Stone -> Board -> [Board] -> Bool -- Требуемое состояние уже встречалось
---ruleKo point stone board boards
---      | ammEqBoards (place point stone board) boards 0 == 0 = True
---      | otherwise = False
 
 -- | Правило Ко борьбы, true если все по правилам.
 -- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
 ruleKo :: Node -> Stone -> Board -> [Board] -> Bool
 ruleKo _ _ _ [] = True
 ruleKo point stone board (x:xs)
-      | (ammEqBoards board (x:xs) 0 < 3) &&
-        (equalBoards (place point stone board) x) == False = True
-      | otherwise = False
+  = ammEqBoards board (x:xs) < 3
+  && place point stone board /= x
 
 -- | Сколько раз встречалась такая доска раньше.
-ammEqBoards :: Board -> [Board] -> Int -> Int
-ammEqBoards _ [] a = a
-ammEqBoards board (x:xs) a | equalBoards board x == True = ammEqBoards board xs a+1
-                           | otherwise = ammEqBoards board xs a
+ammEqBoards :: Board -> [Board] -> Int
+ammEqBoards board = length . filter (== board)
 
 -- | Правило свободы.
 -- | Возвращает True, если все ок (можно ставить камень).
