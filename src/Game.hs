@@ -185,7 +185,7 @@ placeShadowStone (Just point) game
   | ruleBusy point (gameBoard game) = game
   |otherwise = game {gameBoard = Map.insert point (CellShadow ( gamePlayer game)) (deleteShadows (gameBoard game)) }
 
--- | Убрать размытый камень, когда курсора нет. 
+-- | Убрать размытый камень, когда курсора нет.
 deleteShadows :: Board -> Board
 deleteShadows board = (Map.fromList (map (\(p, a) -> if ((a == (CellShadow Black)) || (a == (CellShadow White))) then (p, Empty) else (p, a)) (Map.toList board)))
 
@@ -276,29 +276,46 @@ ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1)
                                                  cmpFieldWithEmpty point_row (point_col-1) board stone ||
                                                  cmpFieldWithEmpty point_row (point_col+1) board stone
 
--- | Возвращает True если правило свободы выполненно для данного соседа.
-cmpFieldWithEmpty:: Int -> Int -> Board -> Stone -> Bool
+-- | Возвращает True если правило свободы выполненно для данного соседа
+cmpFieldWithEmpty:: Int->Int->Board->Stone->Bool
 cmpFieldWithEmpty point_row point_col board stone
         | borderCmp point_row point_col = False
         | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty) ||
-                      (noLastFree point_row point_col board stone [] > 1)
-                      --(amountElementInList (noLastFree point_row point_col board stone [(point_row,point_col)]) > 1)
+                      (sizeList(delSimil(noLastFree point_row point_col board stone [])) > 1)
 
--- | Возвращает количество степеней свободы группы камней.
-noLastFree:: Int -> Int -> Board -> Stone -> [(Int,Int)] -> Int
+-- \ Размер списка
+sizeList::[a]->Int
+sizeList [] = 0
+sizeList (_ : xs) = 1 + sizeList xs
+
+-- \ Удаление одинаковых элемнтов списка
+delSimil::[(Int,Int)]->[(Int,Int)]
+delSimil [] = []
+delSimil ((x,y):xs) = (x,y) : delSimil (filter (\(x2,y2)->x2/=x && y2/=y) xs)
+
+-- | Возвращает список из координат свободных позиций вокруг группы камней (с повторениями)
+noLastFree::Int->Int->Board->Stone->[(Int,Int)]->[(Int,Int)]
 noLastFree row col board stone list
+  | borderCmp row col || ((filter (\(x,y)->x==row && y==col) list) /= [])= []
+  | (Map.lookup (row, col) board) == (Just Empty) = [(row,col)]
+  | (Map.lookup (row, col) board) == (Just (Cell stone)) = noLastFree (row - 1) col board stone ((row,col) : list) ++
+                                                           noLastFree (row + 1) col board stone ((row,col) : list) ++
+                                                           noLastFree row (col - 1) board stone ((row,col) : list) ++
+                                                           noLastFree row (col + 1) board stone ((row,col) : list)
+  | otherwise = []
+
+noLastFreeAmount:: Int -> Int -> Board -> Stone -> [(Int,Int)] -> Int
+noLastFreeAmount row col board stone list
   | borderCmp row col = 0
   | (filter (\(x, y) -> x == row && y == col) list) /= [] = 0
   | (Map.lookup (row, col) board) == (Just Empty) = 1
-  | (Map.lookup (row, col) board) == (Just (Cell stone)) = noLastFree (row - 1) col board stone ((row, col) : list) +
-                                                           noLastFree (row + 1) col board stone ((row, col) : list) +
-                                                           noLastFree row (col - 1) board stone ((row, col) : list) +
-                                                           noLastFree row (col + 1) board stone ((row, col) : list)
+  | (Map.lookup (row, col) board) == (Just (Cell stone)) = noLastFreeAmount (row - 1) col board stone ((row, col) : list) +
+                                                           noLastFreeAmount (row + 1) col board stone ((row, col) : list) +
+                                                           noLastFreeAmount row (col - 1) board stone ((row, col) : list) +
+                                                           noLastFreeAmount row (col + 1) board stone ((row, col) : list)
   | otherwise = 0
-
-
-  -- | Возвращает True если вышли за границы поля.
-borderCmp:: Int -> Int -> Bool
+  -- | Возвращает True если вышли за границы поля
+borderCmp::Int->Int->Bool
 borderCmp point_row point_col = point_row < 0 ||
                                 point_row > boardHeight ||
                                 point_col < 0 ||
@@ -369,7 +386,7 @@ isFreedom (x, y) (Cell stone) board
     (Map.lookup (x, y - 1) board) == (Just Empty) ||
     (Map.lookup (x, y + 1) board) == (Just Empty)
       = True
-  |otherwise = (noLastFree x y board stone [] /= 0)
+  |otherwise = (noLastFreeAmount x y board stone [] /= 0)
   -- можно без if
   -- | otherwise = False
 
