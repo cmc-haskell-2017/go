@@ -1,6 +1,6 @@
 module Game  where
-import Data.Monoid
-import Data.Foldable
+import Data.Monoid()
+import Data.Foldable()
 
 import Graphics.Gloss.Interface.Pure.Game
 import Data.Map (Map)
@@ -13,6 +13,8 @@ run = do
     display = InWindow "Game Go" (screenWidth, screenHeight) (200, 200)
     bgColor = makeColorI 245 245 220 255 -- цвет фона, бежевый
     fps     = 60      -- кол-во кадров в секунду
+
+-- Играем по правилам Американской ассоциации го AGA
 
 -- памятка
 --play :: Display
@@ -67,6 +69,7 @@ data Game = Game
   , gameBoard :: Board
   , listBoard :: [Board] -- список всех предыдущих состояний
   , scoreStones :: AmountStones -- кол-во камней убранных каждым игроком
+  -- , numberOfPass ::
   }
 
 -- | Начальное состояние игры.
@@ -137,7 +140,7 @@ drawCell (Cell stone) = drawStone stone
 drawCell (CellShadow stone) = drawShadowStone stone
 
 -- | Нарисовать камень.
-drawStone:: Stone -> Picture
+drawStone :: Stone -> Picture
 drawStone Black = drawBlack
 drawStone White = drawWhite
 
@@ -176,6 +179,7 @@ drawWhite = pictures
 handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
+-- handleGame (EventKey (SpecialKey KeySpace) _ _ _) = takePass
 handleGame _ = id
 
 -- | Поставить размытый камень под курсором мышки.
@@ -187,7 +191,9 @@ placeShadowStone (Just point) game
 
 -- | Убрать размытый камень, когда курсора нет.
 deleteShadows :: Board -> Board
-deleteShadows board = (Map.fromList (map (\(p, a) -> if ((a == (CellShadow Black)) || (a == (CellShadow White))) then (p, Empty) else (p, a)) (Map.toList board)))
+deleteShadows board =
+  (Map.fromList (map (\(p, a) -> if ((a == (CellShadow Black)) ||
+  (a == (CellShadow White))) then (p, Empty) else (p, a)) (Map.toList board)))
 
 -- | Получить координаты клетки под мышкой(потом будет распознование близости мышки с пересечением сетки).
 mouseToCell :: Point -> Maybe Node
@@ -204,16 +210,22 @@ placeStone (Just point) game =
       Just _ -> game    -- если есть победитель, то поставить фишку нельзя
       Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
         Nothing -> game -- если поставить фишку нельзя, ничего не изменится
-        Just newBoard -> removeStones  (completeMove newBoard game)
+        Just newBoard -> completeMove (removeStones (changeBoard newBoard game))
+
+-- | Применяем изменения, которые произошли на доске.
+changeBoard :: Board -> Game -> Game
+changeBoard board game = game
+  { gameBoard  = board
+  , listBoard = setBoard (gameBoard game) (listBoard game) -- будет ли это работать?
+  }
 
 -- | Закончить ход, инициализировать состояние игры для нового хода.
-completeMove :: Board -> Game -> Game
-completeMove board game = game
+completeMove :: Game -> Game
+completeMove game = game
   { gamePlayer = switchPlayer (gamePlayer game)
-  , gameScore = amountScores board
+  , gameScore = amountScores (gameBoard game)
   , gameWinner = winner game
-  , gameBoard  = board
-  , listBoard = setBoard board (listBoard game)
+
   }
 
 -- | История состояний игрового поля.
@@ -234,7 +246,7 @@ isPossible :: Node -> Board -> Stone -> [Board] -> Bool
 isPossible point board stone listboard
   | ruleBusy point board = False
   | (not (ruleKo point stone board listboard)) = False
-  | (not (ruleFreedom point stone board)) = False
+  | (not (ruleFreedom point board stone)) = False
   | otherwise = True
 
 
@@ -252,41 +264,47 @@ ammEqBoards board = length . filter (== board)
 
 -- | Правило свободы.
 -- | Возвращает True, если все ок (можно ставить камень).
-ruleFreedom :: Node -> Stone -> Board -> Bool
-ruleFreedom (point_row, point_col) stone board = cmpFieldWithEmpty (point_row-1) point_col board stone ||
-                                                 cmpFieldWithEmpty (point_row+1) point_col board stone ||
-                                                 cmpFieldWithEmpty point_row (point_col-1) board stone ||
-                                                 cmpFieldWithEmpty point_row (point_col+1) board stone
+ruleFreedom :: Node -> Board -> Stone -> Bool
+ruleFreedom (point_row, point_col) board stone =
+  cmpFieldWithEmpty (point_row - 1) point_col board stone ||
+  cmpFieldWithEmpty (point_row + 1) point_col board stone ||
+  cmpFieldWithEmpty point_row (point_col - 1) board stone ||
+  cmpFieldWithEmpty point_row (point_col + 1) board stone
 
--- | Возвращает True если правило свободы выполненно для данного соседа
-cmpFieldWithEmpty:: Int->Int->Board->Stone->Bool
+-- | Возвращает True если правило свободы выполненно для данного соседа.
+cmpFieldWithEmpty :: Int -> Int -> Board -> Stone -> Bool
 cmpFieldWithEmpty point_row point_col board stone
-        | borderCmp point_row point_col = False
-        | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty) ||
-                      (sizeList(delSimil(noLastFree point_row point_col board stone [])) > 1)
+  | borderCmp point_row point_col = False
+  -- | (Map.lookup (point_row, point_col) board) == (Just (Cell (switchPlayer stone))) &&
+  --                                                (amountOfFreedom == 1)
+  --                                                 = True
+  | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty) ||
+              (amountOfFreedom > 1)
+    where
+      amountOfFreedom = length (delSimil (noLastFree point_row point_col board stone []))
 
--- \ Размер списка
-sizeList::[a]->Int
-sizeList [] = 0
-sizeList (_ : xs) = 1 + sizeList xs
+-- | Размер списка  --- для списка есть size или length
+-- sizeList :: [a] -> Int
+-- sizeList [] = 0
+-- sizeList (_ : xs) = 1 + sizeList xs
 
--- \ Удаление одинаковых элемнтов списка
-delSimil::[(Int,Int)]->[(Int,Int)]
+-- | Удаление одинаковых элемнтов списка.
+delSimil :: [(Int, Int)] -> [(Int, Int)]
 delSimil [] = []
-delSimil ((x,y):xs) = (x,y) : delSimil (filter (\(x2,y2)->x2/=x && y2/=y) xs)
+delSimil ((x, y):xs) = (x, y):delSimil (filter (\(x2, y2) -> x2 /= x && y2 /= y) xs)
 
 -- | Возвращает список из координат свободных позиций вокруг группы камней (с повторениями)
-noLastFree::Int->Int->Board->Stone->[(Int,Int)]->[(Int,Int)]
+noLastFree :: Int -> Int -> Board -> Stone -> [(Int, Int)] -> [(Int, Int)]
 noLastFree row col board stone list
-  | borderCmp row col || ((filter (\(x,y)->x==row && y==col) list) /= [])= []
-  | (Map.lookup (row, col) board) == (Just Empty) = [(row,col)]
-  | (Map.lookup (row, col) board) == (Just (Cell stone)) = noLastFree (row - 1) col board stone ((row,col) : list) ++
-                                                           noLastFree (row + 1) col board stone ((row,col) : list) ++
-                                                           noLastFree row (col - 1) board stone ((row,col) : list) ++
-                                                           noLastFree row (col + 1) board stone ((row,col) : list)
+  | borderCmp row col || ((filter (\(x, y) -> x == row && y == col) list) /= []) = []
+  | (Map.lookup (row, col) board) == (Just Empty) = [(row, col)]
+  | (Map.lookup (row, col) board) == (Just (Cell stone)) = noLastFree (row - 1) col board stone ((row, col) : list) ++
+                                                           noLastFree (row + 1) col board stone ((row, col) : list) ++
+                                                           noLastFree row (col - 1) board stone ((row, col) : list) ++
+                                                           noLastFree row (col + 1) board stone ((row, col) : list)
   | otherwise = []
 
-noLastFreeAmount:: Int -> Int -> Board -> Stone -> [(Int,Int)] -> Int
+noLastFreeAmount :: Int -> Int -> Board -> Stone -> [(Int, Int)] -> Int
 noLastFreeAmount row col board stone list
   | borderCmp row col = 0
   | (filter (\(x, y) -> x == row && y == col) list) /= [] = 0
@@ -296,12 +314,13 @@ noLastFreeAmount row col board stone list
                                                            noLastFreeAmount row (col - 1) board stone ((row, col) : list) +
                                                            noLastFreeAmount row (col + 1) board stone ((row, col) : list)
   | otherwise = 0
-  -- | Возвращает True если вышли за границы поля
-borderCmp::Int->Int->Bool
+
+-- | Возвращает True если вышли за границы поля.
+borderCmp :: Int -> Int -> Bool
 borderCmp point_row point_col = point_row < 0 ||
-                                point_row > boardHeight ||
+                                point_row > boardHeight - 1 ||
                                 point_col < 0 ||
-                                point_col > boardWidth
+                                point_col > boardWidth - 1
 
 -- | Занято ли место, false если не занято.
 ruleBusy :: Node -> Board -> Bool
@@ -312,26 +331,21 @@ ruleBusy p board
 -- | Убрать камни без свободы и засчитать другому игроку столько очков,
 -- сколько было убрано камней.
 removeStones :: Game -> Game
-removeStones game = Game
-  { gamePlayer = gamePlayer game
-  , gameScore = gameScore game
-  , gameComi = gameComi game
-  , gameWinner = gameWinner game
-  , gameBoard  = (deleteFromBoard loS (gameBoard game))
-  , listBoard = listBoard game
+removeStones game = game
+  { gameBoard  = (deleteFromBoard loS (gameBoard game))
   , scoreStones = countStones (scoreStones game)  loS
   }
     where
-      loS = listOfStones (Map.toList (gameBoard game)) (gameBoard game)
+      loS = listOfStones (Map.toList (gameBoard game)) (gameBoard game) (gamePlayer game)
 
--- Возвращает список камней которые, необходимо удалить.
-listOfStones :: [(Node, Cell)] -> Board -> [(Node, Cell)]
-listOfStones [] _ = []
-listOfStones (((x, y), a) : xs) board
-  | isFreedom (x, y) a board = listOfStones xs board
-  | otherwise = ((x, y), a) : listOfStones xs board
+-- | Возвращает список камней которые, необходимо удалить.
+listOfStones :: [(Node, Cell)] -> Board -> Stone -> [(Node, Cell)]
+listOfStones [] _ _ = []
+listOfStones (((x, y), a) : xs) board stone
+  | a == (Cell stone) || isFreedom (x, y) a board = listOfStones xs board stone
+  | otherwise = ((x, y), a) : listOfStones xs board stone
 
--- Удаляет камни из списка с доски.
+-- | Удаляет камни из списка с доски.
 deleteFromBoard :: [(Node, Cell)] -> Board -> Board
 deleteFromBoard [] board = board
 deleteFromBoard (((x, y), _):xs) board = deleteFromBoard xs (Map.insert (x, y) Empty board )
@@ -356,7 +370,7 @@ countStones (x, y) ((_ , a) : xs)
 -- надо проверять только 4 элемента, не весь список
 
 
--- Функция которая возвращает False, если у камня и его соседей нет степени свободы,
+-- | Функция которая возвращает False, если у камня и его соседей нет степени свободы,
 -- и True в противном случае.
 isFreedom :: Node -> Cell -> Board -> Bool
 isFreedom _ Empty _ = True
