@@ -275,13 +275,13 @@ ruleFreedom (point_row, point_col) board stone =
 cmpFieldWithEmpty :: Int -> Int -> Board -> Stone -> Bool
 cmpFieldWithEmpty point_row point_col board stone
   | borderCmp point_row point_col = False
-  -- | (Map.lookup (point_row, point_col) board) == (Just (Cell (switchPlayer stone))) -- &&
-  --                                                (amountOfFreedom == 1)
-                                                  -- = True
+  | (Map.lookup (point_row, point_col) board) == (Just (Cell (switchPlayer stone))) &&
+                                                 (amountOf (switchPlayer stone) == 0)
+                                                  = True
   | otherwise = (Map.lookup (point_row, point_col) board) == (Just Empty) ||
-              (amountOf >= 1)
+              (amountOf stone >= 1)
     where
-      amountOf = amountOfFreedom point_row point_col board stone -- Переименовать эту функцию
+      amountOf stone2 = amountOfFreedom point_row point_col board stone2 -- Переименовать эту функцию
 
 -- | Кол-во свободы у ближайщих групп.
 amountOfFreedom :: Int -> Int -> Board -> Stone -> Int
@@ -370,7 +370,6 @@ countStones (x, y) ((_ , a) : xs)
 --       fix (point, (Just cell)) = (point, cell)
 --  filter (\((k , l), a) -> ((x == k) && ((l == y-1) || (l == y+1))) || ((y == l) && ((l == x-1) || (l == x+1))) && (a == cell)) (Map.toList board)
 -- надо проверять только 4 элемента, не весь список
-
 
 -- | Функция которая возвращает False, если у камня и его соседей нет степени свободы,
 -- и True в противном случае.
