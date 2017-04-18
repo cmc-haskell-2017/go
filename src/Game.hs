@@ -216,7 +216,7 @@ placeStone (Just point) game =
 changeBoard :: Board -> Game -> Game
 changeBoard board game = game
   { gameBoard  = board
-  , listBoard = setBoard (gameBoard game) (listBoard game) -- будет ли это работать?
+  -- , listBoard = setBoard (gameBoard game) (listBoard game) -- будет ли это работать?
   }
 
 -- | Закончить ход, инициализировать состояние игры для нового хода.
@@ -225,6 +225,7 @@ completeMove game = game
   { gamePlayer = switchPlayer (gamePlayer game)
   , gameScore = amountScores (gameBoard game)
   , gameWinner = winner game
+  , listBoard = setBoard (gameBoard game) (listBoard game)
   }
 
 -- | История состояний игрового поля.
@@ -241,7 +242,7 @@ modifyAt point board stone boards
 
 -- | Проверка на правила игры, false если не по правилам.
 isPossible :: Node -> Board -> Stone -> [Board] -> Bool
-isPossible point board stone listboard
+isPossible point board stone _
   | ruleBusy point board = False
   -- | (not (ruleKo point stone board listboard)) = False
   | (not (ruleFreedom point board stone)) = False
@@ -258,7 +259,10 @@ ruleKo game
     }
   | otherwise = game
     where
-      func game = tail (listBoard game) /= [] && (gameBoard game) == head (tail (listBoard game)) || ammEqBoards (gameBoard game) (listBoard game) >= 3
+      func onegame = (listBoard onegame) /= [] &&
+        tail (listBoard onegame) /= [] &&
+       (gameBoard onegame) == head (tail (listBoard onegame)) ||
+       ammEqBoards (gameBoard onegame) (listBoard onegame) >= 3
 
 -- | Правило Ко борьбы, true если все по правилам.
 -- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
