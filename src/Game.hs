@@ -210,13 +210,13 @@ placeStone (Just point) game =
       Just _ -> game    -- если есть победитель, то поставить фишку нельзя
       Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
         Nothing -> game -- если поставить фишку нельзя, ничего не изменится
-        Just newBoard -> completeMove (removeStones (changeBoard newBoard game))
+        Just newBoard -> completeMove (ruleKo (removeStones (changeBoard newBoard game)))
 
 -- | Применяем изменения, которые произошли на доске.
 changeBoard :: Board -> Game -> Game
 changeBoard board game = game
   { gameBoard  = board
-  , listBoard = setBoard (gameBoard game) (listBoard game) -- будет ли это работать?
+  -- , listBoard = setBoard (gameBoard game) (listBoard game) -- будет ли это работать?
   }
 
 -- | Закончить ход, инициализировать состояние игры для нового хода.
@@ -225,13 +225,12 @@ completeMove game = game
   { gamePlayer = switchPlayer (gamePlayer game)
   , gameScore = amountScores (gameBoard game)
   , gameWinner = winner game
-
+  , listBoard = setBoard (gameBoard game) (listBoard game)
   }
 
 -- | История состояний игрового поля.
 setBoard :: Board -> [Board] -> [Board]
 setBoard board listboard = board : listboard
-
 
 -- | Применить преобразование к элементу map
 -- с заданным ключом. Если преобразование не удалось — вернуть 'Nothing'.
@@ -243,20 +242,34 @@ modifyAt point board stone boards
 
 -- | Проверка на правила игры, false если не по правилам.
 isPossible :: Node -> Board -> Stone -> [Board] -> Bool
-isPossible point board stone listboard
+isPossible point board stone _
   | ruleBusy point board = False
-  | (not (ruleKo point stone board listboard)) = False
+  -- | (not (ruleKo point stone board listboard)) = False
   | (not (ruleFreedom point board stone)) = False
   | otherwise = True
 
 
+ruleKo :: Game -> Game
+ruleKo game
+  | func game = game
+    { gameBoard = head (listBoard game)
+    , listBoard = tail (listBoard game)
+    , gamePlayer = switchPlayer (gamePlayer game)
+    -- , scoreStones надо будет отменять изменения обратно
+    }
+  | otherwise = game
+    where
+      func onegame = (listBoard onegame) /= [] &&
+        tail (listBoard onegame) /= [] &&
+       (gameBoard onegame) == head (tail (listBoard onegame)) ||
+       ammEqBoards (gameBoard onegame) (listBoard onegame) >= 3
+
 -- | Правило Ко борьбы, true если все по правилам.
 -- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
-ruleKo :: Node -> Stone -> Board -> [Board] -> Bool
-ruleKo _ _ _ [] = True
-ruleKo point stone board (x:xs)
-  = ammEqBoards board (x:xs) < 3
-  && place point stone board /= x
+-- ruleKo :: Node -> Stone -> Board -> [Board] -> Bool
+-- ruleKo _ _ _ [] = True
+-- ruleKo point stone board (x:xs) =
+--   place point stone board /= x && ammEqBoards board (x:xs) < 3
 
 -- | Сколько раз встречалась такая доска раньше.
 ammEqBoards :: Board -> [Board] -> Int
@@ -305,18 +318,6 @@ noLastFree row col board stone list
     noLastFree row (col + 1) board stone ((row, col) : list)
   | otherwise = []
 
--- | Почти две одинаковые функции, это не порядок.
--- noLastFreeAmount :: Int -> Int -> Board -> Stone -> [(Int, Int)] -> Int
--- noLastFreeAmount row col board stone list
---   | borderCmp row col = 0
---   | (filter (\(x, y) -> x == row && y == col) list) /= [] = 0
---   | (Map.lookup (row, col) board) == (Just Empty) = 1
---   | (Map.lookup (row, col) board) == (Just (Cell stone)) = noLastFreeAmount (row - 1) col board stone ((row, col) : list) +
---                                                            noLastFreeAmount (row + 1) col board stone ((row, col) : list) +
---                                                            noLastFreeAmount row (col - 1) board stone ((row, col) : list) +
---                                                            noLastFreeAmount row (col + 1) board stone ((row, col) : list)
-  -- | otherwise = 0
-
 -- | Возвращает True если вышли за границы поля.
 borderCmp :: Int -> Int -> Bool
 borderCmp point_row point_col = point_row < 0 ||
@@ -358,18 +359,6 @@ countStones a [] = a
 countStones (x, y) ((_ , a) : xs)
   | a == Cell Black = countStones (x + 1, y) xs
   | otherwise = countStones (x, y + 1) xs
-
--- Возвращает список соседей для камня, у которых их цвет совпадает с цветом камня
--- neighboursByColor :: Node -> Cell -> Board -> [(Node,Cell)]
--- neighboursByColor  (x,y) cell board = map fix (filter (\(point, a) -> a == (Just cell) ) [((x + 1, y), Map.lookup (x + 1, y) board)
---   , ((x - 1, y), Map.lookup (x - 1, y) board)
---   , ((x, y + 1), Map.lookup (x, y + 1) board)
---   , ((x, y - 1), Map.lookup (x, y - 1) board)
---   ])
---     where
---       fix (point, (Just cell)) = (point, cell)
---  filter (\((k , l), a) -> ((x == k) && ((l == y-1) || (l == y+1))) || ((y == l) && ((l == x-1) || (l == x+1))) && (a == cell)) (Map.toList board)
--- надо проверять только 4 элемента, не весь список
 
 -- | Функция которая возвращает False, если у камня и его соседей нет степени свободы,
 -- и True в противном случае.
