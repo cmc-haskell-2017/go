@@ -4,6 +4,7 @@ import Data.Foldable()
 
 import Graphics.Gloss.Interface.Pure.Game
 import Data.Map (Map)
+-- import Data.Char
 import qualified Data.Map as Map
 
 run :: IO ()
@@ -60,6 +61,9 @@ type Whitesum = Int
 -- | Кол-во камней убранных каждым игроком.
 type AmountStones = (Blacksum, Whitesum)
 
+-- | Кол-во пассов подряд каждого игрока
+type Passes = (Int, Int)
+
 -- | Состоние поля, мне кажется оно должно быть таким.
 data Game = Game
   { gamePlayer :: Stone -- чей ход
@@ -69,7 +73,7 @@ data Game = Game
   , gameBoard :: Board
   , listBoard :: [Board] -- список всех предыдущих состояний
   , scoreStones :: AmountStones -- кол-во камней убранных каждым игроком
-  -- , numberOfPass ::
+  , numberOfPass :: Passes
   }
 
 -- | Начальное состояние игры.
@@ -84,6 +88,7 @@ initGame = Game
   , gameBoard  = initBoard
   , listBoard = []
   , scoreStones = (0, 0)
+  , numberOfPass = (0, 0)
   }
 
 -- | Построение пустого поля.
@@ -110,12 +115,17 @@ drawGame :: Game -> Picture
 drawGame game = translate (-w) (-h) (scale c c (pictures
   [ drawGrid
   , drawBoard (gameBoard game)
+  -- ,drawPass (numberOfPass game)
   ]))
   where
     c = fromIntegral cellSize
     w = fromIntegral screenWidth  / 2 - offset
     h = fromIntegral screenHeight / 2 - offset
     offset = fromIntegral screenOffset / 2
+
+-- | Отрисовка количества пассов
+-- drawPass :: Passes -> Picture
+-- drawPass (x,y) = (scale 0.005 0.005 (text [(intToDigit x), (intToDigit y)]))
 
 -- | Ортисовка сетки игрового поля.
 drawGrid :: Picture
@@ -177,10 +187,33 @@ drawWhite = pictures
 
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
-handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
+handleGame (EventKey (MouseButton LeftButton) Up _ mouse) = placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
--- handleGame (EventKey (SpecialKey KeySpace) _ _ _) = takePass
+handleGame (EventKey (SpecialKey KeySpace) Up _ _) = takePass . setPass
 handleGame _ = id
+
+
+-- | Добавление пасса
+setPass :: Game -> Game
+setPass game 
+  | (gamePlayer game) == Black = game {numberOfPass = (\(x , y) -> (x+1 , y)) (numberOfPass game)}
+  | otherwise = game { numberOfPass = (\(x , y) -> (x , y+1)) (numberOfPass game)}
+
+-- | Обработка пассов
+takePass :: Game -> Game
+takePass game 
+  | np == (1,1) = checkGroups game
+  | np == (2,2) = gameOver game
+  | otherwise = game
+  where np = (numberOfPass game)
+
+-- |  Проверка групп
+checkGroups :: Game -> Game
+checkGroups = id
+
+gameOver :: Game -> Game
+gameOver = id
+
 
 -- | Поставить размытый камень под курсором мышки.
 placeShadowStone :: Maybe Node -> Game -> Game
