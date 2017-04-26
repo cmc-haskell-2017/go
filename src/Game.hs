@@ -4,7 +4,7 @@ import Data.Foldable()
 
 import Graphics.Gloss.Interface.Pure.Game
 import Data.Map (Map)
--- import Data.Char
+import Data.Char
 import qualified Data.Map as Map
 
 run :: IO ()
@@ -116,6 +116,7 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
   [ drawGrid
   , drawBoard (gameBoard game)
   -- ,drawPass (numberOfPass game)
+  , drawScores (gameScore game)
   ]))
   where
     c = fromIntegral cellSize
@@ -126,6 +127,13 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
 -- | Отрисовка количества пассов
 -- drawPass :: Passes -> Picture
 -- drawPass (x,y) = (scale 0.005 0.005 (text [(intToDigit x), (intToDigit y)]))
+
+-- | Отрисовка количества очков игры
+drawScores :: Scores -> Picture
+drawScores (x, y) = translate w h (scale 0.005 0.005 (text [(intToDigit (round x)), (intToDigit  (round y))] ))
+  where
+    w = fromIntegral screenWidth / 200
+    h = fromIntegral screenHeight / 200
 
 -- | Ортисовка сетки игрового поля.
 drawGrid :: Picture
@@ -195,13 +203,13 @@ handleGame _ = id
 
 -- | Добавление пасса
 setPass :: Game -> Game
-setPass game 
+setPass game
   | (gamePlayer game) == Black = game {numberOfPass = (\(x , y) -> (x+1 , y)) (numberOfPass game)}
   | otherwise = game { numberOfPass = (\(x , y) -> (x , y+1)) (numberOfPass game)}
 
 -- | Обработка пассов
 takePass :: Game -> Game
-takePass game 
+takePass game
   | np == (1,1) = checkGroups game
   | np == (2,2) = gameOver game
   | otherwise = game
@@ -295,7 +303,7 @@ ruleKo game
       func onegame = (listBoard onegame) /= [] &&
         tail (listBoard onegame) /= [] &&
        (gameBoard onegame) == head (tail (listBoard onegame)) ||
-       ammEqBoards (gameBoard onegame) (listBoard onegame) >= 3
+       ammEqBoards (gameBoard onegame) (listBoard onegame) > 1
 
 -- | Правило Ко борьбы, true если все по правилам.
 -- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
@@ -423,6 +431,16 @@ place p stone = Map.insert p (Cell stone)
 switchPlayer :: Stone -> Stone
 switchPlayer Black = White
 switchPlayer White = Black
+
+-- | веделить территории на доске для конкретного цвета
+-- allocateOfTerritory :: Stone -> Board -> [Board] -- [Board] == [Map Node Cell]
+-- allocateOfTerritory stone board =
+
+
+-- allocateOfBoarder :: Board -> [Board]
+-- allocateOfBoarder board
+
+--
 
 
 -- | Подсчет количество очков
