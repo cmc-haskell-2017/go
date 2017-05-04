@@ -1,6 +1,7 @@
 module Models where
 
-import Data.Map (Map)
+import qualified Data.Map as Map
+import Config
 
 -- =========================================
 -- Модель игры
@@ -24,7 +25,7 @@ type Scores = (Score, Score)
 type Node = (Int, Int)
 
 -- | Игровое поле.
-type Board = Map Node Cell
+type Board = Map.Map Node Cell
 
 -- | Кол-во камней, которые "съели" черные.
 type Blacksum = Int
