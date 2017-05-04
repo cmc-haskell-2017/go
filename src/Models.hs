@@ -39,6 +39,31 @@ type AmountStones = (Blacksum, Whitesum)
 -- | Кол-во пассов подряд каждого игрока
 type Passes = (Int, Int)
 
+-- | Ход игрока
+type Move = (Node, Stone)
+
+-- | Лучший ход
+data BestMove
+  = NoMove
+  | BestMove Move Estimate
+
+-- | Дерево игры
+data GameTree a = Leaf a | Node [(Move, GameTree a)]
+  deriving(Functor)
+
+-- | Оценка поля
+data Estimate = Estimate Int
+  deriving (Ord)
+
+-- | Монод для лучшего хода
+instance Monoid BestMove where
+  mempty = NoMove
+  mappend (BestMove m1 e1) (BestMove m2 e2)
+    | e1 >= e2  = BestMove m1 e1
+    | otherwise = BestMove m2 e2
+  mappend NoMove bm = bm
+  mappend bm NoMove = bm
+
 -- | Состоние поля, мне кажется оно должно быть таким.
 data Game = Game
   { gamePlayer :: Stone -- чей ход
