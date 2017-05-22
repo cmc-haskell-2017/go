@@ -305,16 +305,33 @@ updateGame _ = id
 
 -- | Главная функция
 ai :: Stone -> Board -> Maybe Move
+ai _ _ = Nothing
+-- ai stone board = fromBestMove . fold . bestMoves . fmap estimate . cutTree n . gameTree
+-- более умная свертка fold
+
+-- minimax :: GameTree (m, e) -> m
+-- minimax
 
 -- | Возможные ходы
 possibleMoves :: Stone -> Board -> [Move]
-
+possibleMoves _ _ = []
 
 -- | Построение дерева игры
-gameTree :: Board -> GameTree Board
+gameTree :: Board -> GameTree b Board
+gameTree a = Leaf a
 
 -- | Обрезание дерева игры
-cutTree :: Int -> GameTree a -> GameTree a
+cutTree :: Int -> GameTree b a -> GameTree b a
+cutTree _ (Leaf a) = Leaf a
+-- cutTree n tree@(Node b trees)
+--   | n == 0 = tree -- доделать
+--   | otherwise = Node $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
 
 -- | Оценка игрового поля
 estimate :: Board -> Estimate
+estimate _ = Estimate 0 0 0.0
+
+-- | Лучшие ходы
+bestMoves :: GameTree b Estimate -> GameTree b BestMove
+bestMoves (Leaf _) = (Leaf NoMove)
+-- bestMoves (Node ts) = Node $ map (\(m, t) -> (m, fmap (BestMove m) t) ) ts
