@@ -16,8 +16,10 @@ drawGame :: Game -> Picture
 drawGame game = translate (-w) (-h) (scale c c (pictures
   [ drawGrid
   , drawBoard (gameBoard game)
-  -- ,drawPass (numberOfPass game)
-  , drawScores (gameScore game)
+  -- , drawPass (numberOfPass game)
+  -- , drawScores (gameScore game)
+  , drawStones (scoreStones game)
+  , drawEndGame (gameWinner game) (scoreStones game) (endGame game)
   ]))
   where
     c = fromIntegral cellSize
@@ -26,12 +28,23 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
     offset = fromIntegral screenOffset / 2
 
 -- | Отрисовка количества пассов
--- drawPass :: Passes -> Picture
--- drawPass (x,y) = (scale 0.005 0.005 (text [(intToDigit x), (intToDigit y)]))
+drawPass :: Passes -> Picture
+drawPass (x,y) = (scale 0.005 0.005 (text [(intToDigit x), (intToDigit y)]))
 
 -- | Отрисовка количества очков игры
 drawScores :: Scores -> Picture
 drawScores (x, y) = translate w h (scale 0.005 0.005 (text [(intToDigit (round x)), (intToDigit  (round y))] ))
+  where
+    w = fromIntegral screenWidth / 200
+    h = fromIntegral screenHeight / 200
+
+drawEndGame :: Maybe Stone -> AmountStones -> Maybe Float -> Picture
+drawEndGame _ _ Nothing = blank
+drawEndGame _ _ (Just c) = (scale c c (text "END GAME"))
+
+--
+drawStones :: AmountStones -> Picture
+drawStones (x, y) = translate w h (scale 0.005 0.005 (text [(intToDigit x), (intToDigit y)] ))
   where
     w = fromIntegral screenWidth / 200
     h = fromIntegral screenHeight / 200

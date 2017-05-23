@@ -52,7 +52,7 @@ takePass :: Game -> Game
 takePass game
   | np == (1,1) = checkGroups game
   | np == (2,2) = gameOver game
-  | otherwise = game
+  | otherwise = game {gamePlayer = switchPlayer (gamePlayer game)}
   where np = (numberOfPass game)
 
 -- |  Проверка групп
@@ -60,7 +60,10 @@ checkGroups :: Game -> Game
 checkGroups = id
 
 gameOver :: Game -> Game
-gameOver = id
+gameOver game = game
+  { gameWinner = winner game
+  , endGame = Just 0.005
+  }
 
 
 -- | Поставить размытый камень под курсором мышки.
@@ -105,7 +108,6 @@ completeMove :: Game -> Game
 completeMove game = game
   { gamePlayer = switchPlayer (gamePlayer game)
   , gameScore = amountScores (gameBoard game)
-  , gameWinner = winner game
   , listBoard = setBoard (gameBoard game) (listBoard game)
   }
 
@@ -289,9 +291,14 @@ switchPlayer White = Black
 amountScores :: Board -> Scores
 amountScores _ = (0.0, 0.0)
 
--- | Определить победителя на игровом поле.
+-- | Определить победителя на игровом поле. ничей не должно быть
 winner :: Game -> Maybe Stone
-winner _ = Nothing
+winner game
+  | (scoreblack game) < (scorewhite game) = Just White
+  | otherwise = Just Black
+    where
+      scoreblack game = fst (gameScore game) + fromIntegral( fst ( scoreStones game))
+      scorewhite game = (gameComi game) + snd (gameScore game) + fromIntegral( snd ( scoreStones game))
 
 -- | Обновление игры.
 -- В этой игре все изменения происходят только по действиям игрока,
@@ -324,8 +331,8 @@ gameTree a = Leaf a
 cutTree :: Int -> GameTree b a -> GameTree b a
 cutTree _ (Leaf a) = Leaf a
 -- cutTree n tree@(Node b trees)
---   | n == 0 = tree -- доделать
---   | otherwise = Node $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
+--   | n == 0 = Leaf b
+--   | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
 
 -- | Оценка игрового поля
 estimate :: Board -> Estimate
