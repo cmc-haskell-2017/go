@@ -5,6 +5,7 @@ import Database
 
 import Graphics.Gloss.Interface.Pure.Game
 import Data.Map (Map)
+import Graphics.Gloss.Interface.IO.Game
 -- import Data.Char
 import qualified Data.Map as Map
 import qualified Data.Text as T
@@ -15,8 +16,21 @@ import           Database.SQLite.Simple.FromRow-}
 
 run :: IO ()
 run = do
-  manageBD
-    {-play display bgColor fps initGame drawGame handleGame updateGame
+    putStrLn "Input \n1 - for authorization users;\n2 - for registration new user;\n3 - print table of records"
+    manage <- getLine
+    if (manage == "1")
+    then do
+      name1 <- authorizationUser
+      name2 <- authorizationUser
+      playIO display bgColor fps (initGame name1 name2) drawGame handleGame updateGame
+    else do
+      if (manage == "2")
+      then do
+        registrationUser
+        run
+      else do
+        printRecord
+        run
   where
     display = InWindow "Game Go" (screenWidth, screenHeight) (200, 200)
     bgColor = makeColorI 245 245 220 255 -- цвет фона, бежевый
@@ -81,13 +95,15 @@ data Game = Game
   , listBoard :: [Board] -- список всех предыдущих состояний
   , scoreStones :: AmountStones -- кол-во камней убранных каждым игроком
   , numberOfPass :: Passes
+  , nameFirstPlayer :: String
+  , nameSecondPlayer :: String
   }
 
 -- | Начальное состояние игры.
 -- Игровое поле — пусто.
 -- Первый игрок ходит черными.
-initGame :: Game
-initGame = Game
+initGame :: String -> String -> Game
+initGame name1 name2 = Game
   { gamePlayer = Black
   , gameScore = (0, 0)
   , gameComi = playerComi
@@ -96,6 +112,8 @@ initGame = Game
   , listBoard = []
   , scoreStones = (0, 0)
   , numberOfPass = (0, 0)
+  , nameFirstPlayer = name1
+  , nameSecondPlayer = name2
   }
 
 -- | Построение пустого поля.
@@ -118,12 +136,12 @@ createListadd i1 i2
 -- =========================================
 
 -- | Отрисовка игры, складывает изображения сетки и поля.
-drawGame :: Game -> Picture
-drawGame game = translate (-w) (-h) (scale c c (pictures
+drawGame :: Game -> IO Picture
+drawGame game = pure (translate (-w) (-h) (scale c c (pictures
   [ drawGrid
   , drawBoard (gameBoard game)
   -- ,drawPass (numberOfPass game)
-  ]))
+  ])))
   where
     c = fromIntegral cellSize
     w = fromIntegral screenWidth  / 2 - offset
@@ -193,11 +211,18 @@ drawWhite = pictures
 -- =========================================
 
 -- | Обработка событий.
-handleGame :: Event -> Game -> Game
+handleGame :: Event -> Game -> IO Game
 handleGame (EventKey (MouseButton LeftButton) Up _ mouse) = placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
 handleGame (EventKey (SpecialKey KeySpace) Up _ _) = takePass . setPass
-handleGame _ = id
+handleGame _ = gameIOgame
+
+gameIOgame :: Game -> IO Game
+gameIOgame game = pure game
+
+{-
+handleGame (EventKey (SpecialKey KeySpace) Up _ _) = pure (takePass . setPass)
+handleGame _ = pure id-}
 
 
 -- | Добавление пасса
@@ -207,11 +232,11 @@ setPass game
   | otherwise = game { numberOfPass = (\(x , y) -> (x , y+1)) (numberOfPass game)}
 
 -- | Обработка пассов
-takePass :: Game -> Game
+takePass :: Game -> IO Game
 takePass game
-  | np == (1,1) = checkGroups game
-  | np == (2,2) = gameOver game
-  | otherwise = game
+  | np == (1,1) = pure (checkGroups game)
+  | np == (2,2) = pure (gameOver game)
+  | otherwise = pure game
   where np = (numberOfPass game)
 
 -- |  Проверка групп
@@ -223,11 +248,11 @@ gameOver = id
 
 
 -- | Поставить размытый камень под курсором мышки.
-placeShadowStone :: Maybe Node -> Game -> Game
-placeShadowStone Nothing game = game
+placeShadowStone :: Maybe Node -> Game -> IO Game
+placeShadowStone Nothing game = pure game
 placeShadowStone (Just point) game
-  | ruleBusy point (gameBoard game) = game
-  |otherwise = game {gameBoard = Map.insert point (CellShadow ( gamePlayer game)) (deleteShadows (gameBoard game)) }
+  | ruleBusy point (gameBoard game) = pure game
+  |otherwise = pure game {gameBoard = Map.insert point (CellShadow ( gamePlayer game)) (deleteShadows (gameBoard game)) }
 
 -- | Убрать размытый камень, когда курсора нет.
 deleteShadows :: Board -> Board
@@ -243,13 +268,13 @@ mouseToCell (x, y) = (Just (i, j))
     j = floor (y + fromIntegral screenHeight / 2) `div` cellSize
 
 -- | Поставить камень и сменить игрока (если возможно).
-placeStone :: Maybe Node -> Game -> Game
-placeStone Nothing game = game
+placeStone :: Maybe Node -> Game -> IO Game
+placeStone Nothing game = pure game
 placeStone (Just point) game =
     case gameWinner game of
-      Just _ -> game    -- если есть победитель, то поставить фишку нельзя
+      Just _ -> pure game    -- если есть победитель, то поставить фишку нельзя
       Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
-        Nothing -> game -- если поставить фишку нельзя, ничего не изменится
+        Nothing -> pure game -- если поставить фишку нельзя, ничего не изменится
         Just newBoard -> completeMove (ruleKo (removeStones (changeBoard newBoard game)))
 
 -- | Применяем изменения, которые произошли на доске.
@@ -260,13 +285,15 @@ changeBoard board game = game
   }
 
 -- | Закончить ход, инициализировать состояние игры для нового хода.
-completeMove :: Game -> Game
-completeMove game = game
-  { gamePlayer = switchPlayer (gamePlayer game)
-  , gameScore = amountScores (gameBoard game)
-  , gameWinner = winner game
-  , listBoard = setBoard (gameBoard game) (listBoard game)
-  }
+completeMove :: Game -> IO Game
+completeMove game = do
+  updateTableRec (nameFirstPlayer(game), nameSecondPlayer(game), fst(amountScores (gameBoard(game))), snd(amountScores(gameBoard(game))))
+  pure game
+    { gamePlayer = switchPlayer (gamePlayer game)
+    , gameScore = amountScores (gameBoard game)
+    , gameWinner = winner game
+    , listBoard = setBoard (gameBoard game) (listBoard game)
+    }
 
 -- | История состояний игрового поля.
 setBoard :: Board -> [Board] -> [Board]
@@ -435,8 +462,17 @@ switchPlayer White = Black
 -- | Подсчет количество очков
 -- самое сложное из всей базовой части это подсчитать очки
 -- над этим надо хорошенько подумать.
-amountScores :: Board -> Scores
-amountScores _ = (0.0, 0.0)
+amountScores :: Board -> (Float, Float)
+amountScores board = (amountBlackStone board, amountWhiteStone board) --(20000.0, 40000)
+
+amountBlackStone :: Board -> Float
+amountBlackStone board = floatFromInt(length(filter (\(x,y) -> y == (Cell Black)) (Map.toList board)))
+
+amountWhiteStone :: Board -> Float
+amountWhiteStone board = floatFromInt(length(filter (\(x,y) -> y == (Cell White)) (Map.toList board)))
+
+floatFromInt :: Int -> Float
+floatFromInt x = fromIntegral x
 
 -- | Определить победителя на игровом поле.
 winner :: Game -> Maybe Stone
@@ -445,8 +481,8 @@ winner _ = Nothing
 -- | Обновление игры.
 -- В этой игре все изменения происходят только по действиям игрока,
 -- поэтому функция обновления — это тождественная функция.
-updateGame :: Float -> Game -> Game
-updateGame _ = id
+updateGame :: Float -> Game -> IO Game
+updateGame _ = gameIOgame
 
 -- =========================================
 -- Константы, параметры игры.

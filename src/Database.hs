@@ -7,6 +7,8 @@ import           Database.SQLite.Simple
 import           Database.SQLite.Simple.FromRow
 import           Control.Monad
 
+type NamePlayer = T.Text
+
 -- | Структура таблицы в базе данных для рекордов
 data Records = Records {id_record :: Int, name1 :: T.Text, name2 :: T.Text, score1 :: Float, score2 :: Float} deriving (Show)
 -- | Структура строки-результата запроса SQL для списка рекордов
@@ -90,6 +92,9 @@ createTableRecord = do
 -- | Функция обновления таблицы рекордов
 updateTableRec :: (String, String, Float, Float) -> IO ()
 updateTableRec (name1, name2, score1, score2)  = do
+  printRecord
+  print name1
+  print score1
   conn <- open "game.db"
   id_record <- queryNamed conn "SELECT id_record from records where name1 = :name1 AND name2 = :name2" [":name1" := (T.pack name1), ":name2" := (T.pack name2)] :: IO [IntValueRow]
   id_record2 <- queryNamed conn "SELECT id_record from records where name1 = :name2 AND name2 = :name1" [":name1" := (T.pack name1), ":name2" := (T.pack name2)] :: IO [IntValueRow]
@@ -133,13 +138,14 @@ updateRecordIfNesessary old_score score1 score2 id_record
 -- | Сравнение новых очков со старыми
 cmpScore :: [ScoreValueRow] -> Float -> Float -> Bool
 cmpScore ((ScoreValueRow oldScore1 oldScore2) : xs) score1 score2
-              | score1 > oldScore1 && score2 > oldScore2 = True
+              | score1 >= oldScore1 && score2 >= oldScore2 = True
               | otherwise = False
 
 -- | Печать списка рекордов, после представления списка в спец. виде
 printRecord :: IO ()
 printRecord = do
       list <- queryTableRec
+      putStrLn "\n\n Table of records"
       printOne (oneRecord(list))
 
 -- | Данная функция делает список из кортежей вида [(имя_игрока_1, имя_игрока_2, количество_очков_игрока_1, количество_очков_игрока_2)]
@@ -227,25 +233,33 @@ createUser (name, password) | (length (password) > 3) = do
     registrationUser
 
 -- | Авторизация пользователя (интерфейс)
-authorizationUser :: IO ()
+authorizationUser :: IO String
 authorizationUser = do
   putStrLn "\n"
   putStrLn "enter login "
   name <- getLine
   putStrLn "enter password "
   password <- getLine
-  authorizationTestUser (name, password)
+  name <- authorizationTestUser (name, password)
+  return name
 
 -- | Непосредственная авторизация пользователя с проверкой пароля
-authorizationTestUser :: (String, String) -> IO ()
+authorizationTestUser :: (String, String) -> IO String
 authorizationTestUser (name, password) | (length (password) > 3) = do
   conn <- open "game.db"
   password_table <- queryNamed conn "SELECT password from users WHERE name = :name" [":name" := name] :: IO [TextValueRow]
-  if ((T.pack password) == (getJustFromMaybe(getMaybeFromRowText (password_table))))
+  if ((getMaybeFromRowText (password_table)) /= Nothing)
   then do
-    print ("Hi " ++ name)
-    close conn
+    if ((T.pack password) == (getJustFromMaybe(getMaybeFromRowText (password_table))))
+    then do
+      {-print ("Hi " ++ name)-}
+      close conn
+      pure name
+    else do
+      print "Wrong login or password. Please try again."
+      close conn
+      authorizationUser
   else do
-    print "Wrong login or password. Please try again."
-    close conn
-    authorizationUser
+      print "Wrong login or password. Please try again."
+      close conn
+      authorizationUser
