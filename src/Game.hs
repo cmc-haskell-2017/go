@@ -109,6 +109,7 @@ completeMove game = game
   { gamePlayer = switchPlayer (gamePlayer game)
   , gameScore = amountScores (gameBoard game)
   , listBoard = setBoard (gameBoard game) (listBoard game)
+  , numberOfPass = (0, 0)
   }
 
 -- | История состояний игрового поля.
