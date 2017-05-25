@@ -14,750 +14,904 @@ run = do
     bgColor = makeColorI 245 245 220 255 -- цвет фона, бежевый
     fps     = 60      -- кол-во кадров в секунду
 
-
+ 
+-- | Имя игрока
 type Name = String
+
+-- | Пароль
 type Password = String
+
+-- | Информация о игроке
 type User = (Name, Password)
+
+-- | Список игроков
 type Users = [User]
 
-
-data ScreenState = FirstScreenState | SecondScreenState | RegistrationScreenState | RecordsScreenState | SettingsScreenState | GameScreenState
-  deriving(Eq, Show)
-
-data FirstScreenState = Enter | Login | Password | Registration | EnterBorder | RegistrationBorder | LoginBorder | PasswordBorder | NoFirstState
-  deriving(Eq, Show)
-
-data SecondScreenState = NewGame | Records | Settings | NewGameBorder | RecordsBorder | SettingsBorder | NoSecondState
-  deriving(Eq, Show)
-
-data RecordsScreenState = ExitRecords | ExitRecordsBorder | NoRecordsState
-  deriving(Eq, Show)
-
-data SettingsScreenState = ExitSettings | ExitSettingsBorder | AIGameBorder | PlayersGameBorder | NoSettingsState
-  deriving(Eq, Show)
-
+-- | Тип игры - ИИ, 2 игрока
 data GameType = AIGame | PlayersGame
   deriving(Eq, Show)
 
-data RegistrationScreenState = ExitRegistration | LoginRegistration | PasswordRegistration | EnterRegistration | ExitRegistrationBorder | LoginRegistrationBorder | PasswordRegistrationBorder | EnterRegistrationBorder | NoRegistrationState
+data Screen = 
+    ScreenLogin LoginScreen                -- Первый экран - ввод логина и пароля
+  | ScreenMainMenu MainMenuScreen          -- Главное меню
+  | ScreenGame Game                        -- Игра
+  | ScreenRegistration RegistrationScreen  -- Окно регистрации
+  | ScreenRecords RecordsScreen            -- Окно со списком рекордов
+  | ScreenSettings SettingsScreen          -- Окно настроек игры
+
+-- | Экран ввода логина и пароля
+data LoginScreen = LoginScreen         
+  { loginFocusButton :: Maybe LoginButton  -- Клавиша, на которую наведен курсор
+  , loginState :: Maybe WriteState         -- Нажата ли кнопка ввода логина или пароля
+  , name :: Name                           -- Введенное имя
+  , password :: Password                   -- Введенный пароль
+  }
+
+-- | Клавиши на экране ввода логина и пароля
+data LoginButton = Login | Password | Registration | Enter
   deriving(Eq, Show)
 
-data Screen = Screen
-  { screenState :: ScreenState
-  , user :: User 
-  , firstScreen :: FirstScreen
-  , secondScreen :: SecondScreen
-  , registrationScreen :: RegistrationScreen
-  , recordsScreen :: RecordsScreen
-  , settingsScreen :: SettingsScreen
-  , game :: Game
+-- | Состояния ввода
+data WriteState = LoginState | PasswordState
+  deriving(Eq, Show)
+
+-- | Экран главного меню
+data MainMenuScreen = MainMenuScreen
+  { menuFocusButton :: Maybe MenuButton  -- Клавиша, на которую наведен курсор
+  , gameType :: GameType                 -- Тип игры
   }
 
-data FirstScreen = FirstScreen
-  { state1 :: FirstScreenState 
-  , name :: Name
-  , password :: Password
-  }
+-- | Клавиши на экране главного меню
+data MenuButton = NewGame | Records | Settings 
+  deriving(Eq, Show)
 
-data SecondScreen = SecondScreen
-  { state2 :: SecondScreenState 
---  , tryUser :: 
-  }
-
+-- | Экран регистрации
 data RegistrationScreen = RegistrationScreen
-  { stateRegistration :: RegistrationScreenState 
-  , newName :: Name
-  , newPassword :: Password
+  { registrationButton :: Maybe RegistrationButton  -- Клавиша, на которую наведен курсор
+  , registrationState :: Maybe WriteState           -- Нажата ли кнопка ввода логина и пароля
+  , newName :: Name                                 -- Регистрируемое имя
+  , newPassword :: Password                         -- Пароль для нового имени
   }
 
+-- | Кнопки на экране регистрации
+data RegistrationButton = 
+    EnterRegistration      -- Подтверждение нового имени и пароля
+  | ExitRegistration       -- Отмена регистрации - выход на экран ввода логина и пароля
+  | LoginRegistration      -- Ввод логина
+  | PasswordRegistration   -- Ввод пароля
+  deriving(Eq, Show)
+
+-- | Экран рекордов
 data RecordsScreen = RecordsScreen
-  { stateRecords :: RecordsScreenState
-  , users :: [User]
-  }
+  { recordsButton :: Maybe RecordsButton  -- Клавиша, на которую наведен курсор
+  , recordsGameType :: GameType           -- Тип игры
+  }      
 
+-- | Кнопка на экране рекордов
+data RecordsButton = ExitRecords  
+  deriving(Eq, Show)
+
+-- | Экран настроек
 data SettingsScreen = SettingsScreen
-  { stateSettings :: SettingsScreenState
-  , gameType :: GameType
+  { settingsButton :: Maybe SettingsButton   -- Клавиша, на которую наведен курсор
+  , settingsGameType :: GameType             -- Тип игры
   }
 
+-- | Кнопки на экране настроек
+data SettingsButton = ExitSettings | AIGameType | PlayersGameType
+  deriving(Eq, Show)
+
+-- | Начальное состояние экрана - экран ввода логина и пароля
 initScreen :: Screen
-initScreen = Screen
-  { screenState = FirstScreenState
-  , user = ("", "")
-  , firstScreen = initFirstScreen
-  , secondScreen = initSecondScreen
-  , registrationScreen = initRegistrationScreen
-  , recordsScreen = initRecordsScreen
-  , settingsScreen = initSettingsScreen
-  , game = initGame
+initScreen = ScreenLogin LoginScreen
+  { loginFocusButton = Nothing        -- Кнопка никакая еще не выделена
+  , loginState = Nothing              -- Не было входа в состояния ввода
+  , name = ""                         -- Имя еще не введено
+  , password = ""                     -- Пароль еще не введен
   }
 
+-- | Отрисовка экранов
 drawScreen :: Screen -> Picture
-drawScreen screen = 
-    case screenState screen of
-       FirstScreenState -> drawFirstScreen (firstScreen screen)
-       SecondScreenState -> drawSecondScreen (secondScreen screen)
-       RegistrationScreenState -> drawRegistrationScreen (registrationScreen screen)
-       RecordsScreenState -> drawRecordsScreen (recordsScreen screen)
-       SettingsScreenState -> drawSettingsScreen (settingsScreen screen)
-       GameScreenState -> drawGame (game screen)
+drawScreen (ScreenLogin loginScreen) = drawLoginScreen loginScreen
+drawScreen (ScreenMainMenu mainMenuScreen) = drawMainMenuScreen mainMenuScreen
+drawScreen (ScreenGame game) = drawGame game
+drawScreen (ScreenRegistration registrationScreen) = drawRegistrationScreen registrationScreen
+drawScreen (ScreenRecords recordsScreen) = drawRecordsScreen recordsScreen
+drawScreen (ScreenSettings settingsScreen) = drawSettingsScreen settingsScreen
 
+-- | На какую клавишу навели курсор на экране ввода логина и пароля
+changeLoginButton :: Point -> Maybe LoginButton
+changeLoginButton point 
+  | isButtonMenu point enterHeight == True = (Just Enter)
+  | isButtonMenu point registrationHeight == True = (Just Registration)
+  | isButtonMenu point loginHeight == True = (Just Login)
+  | isButtonMenu point passwordHeight == True = (Just Password)
+  | otherwise = Nothing
+
+-- | На какую клавишу навели курсор на экране главного меню
+changeMainMenuButton :: Point -> Maybe MenuButton
+changeMainMenuButton point 
+  | isButtonMenu point newGameHeight == True = (Just NewGame)
+  | isButtonMenu point recordsHeight == True = (Just Records)
+  | isButtonMenu point settingsHeight == True = (Just Settings)
+  | otherwise = Nothing
+
+-- | На какую клавишу навели курсор на экране регистрации
+changeRegistrationButton :: Point -> Maybe RegistrationButton
+changeRegistrationButton point 
+  | isButtonMenu point enterHeight == True = (Just EnterRegistration)
+  | isButtonMenu point loginHeight == True = (Just LoginRegistration)
+  | isButtonMenu point passwordHeight == True = (Just PasswordRegistration)
+  | isButtonMenu point exitHeight == True = (Just ExitRegistration)
+  | otherwise = Nothing
+
+-- | На какую клавишу навели курсор на экране рекордов
+changeRecordsButton :: Point -> Maybe RecordsButton
+changeRecordsButton point 
+  | isButtonMenu point exitHeight == True = (Just ExitRecords)
+  | otherwise = Nothing
+
+-- | На какую клавишу навели курсор на экране настроек
+changeSettingsButton :: Point -> Maybe SettingsButton
+changeSettingsButton point 
+  | isButton point x0 yPlayers0 x1 yPlayers1 == True = (Just PlayersGameType)
+  | isButton point x0 yAI0 x1 yAI1 == True = (Just AIGameType)
+  | isButtonMenu point exitHeight == True = (Just ExitSettings)
+  | otherwise = Nothing
+  where
+    x0 = gameTypeVarX - 10
+    x1 = x0 + menuItemWidth
+    yPlayers0 = gameTypeSettingsHeight - 20
+    yPlayers1 = yPlayers0 + menuItemHeight
+    yAI0 = gameTypeSettingsHeight - menuItemHeight - 30
+    yAI1 = yAI0 + menuItemHeight
+
+-- | Была нажата кнопка мыши на экране ввода логина и пароля => сменить экран
+changeLoginScreen :: Point -> Screen -> Screen
+changeLoginScreen point (ScreenLogin screen) 
+  | (loginFocusButton screen) == Nothing 
+      = ScreenLogin LoginScreen 
+        { loginFocusButton = Nothing
+        , loginState = Nothing
+        , name = (name screen)
+        , password = (password screen)
+        }
+  | (loginFocusButton screen) == (Just Login) 
+      = ScreenLogin LoginScreen 
+        { loginFocusButton = (Just Login)
+        , loginState = (Just LoginState)
+        , name = (name screen)
+        , password = (password screen)
+        }
+  | (loginFocusButton screen) == (Just Password) 
+      = ScreenLogin LoginScreen 
+        { loginFocusButton = (Just Password)
+        , loginState = (Just PasswordState)
+        , name = (name screen)
+        , password = (password screen)
+        }
+  | (loginFocusButton screen) == (Just Registration) 
+      = ScreenRegistration RegistrationScreen  
+        { registrationButton = Nothing
+        , registrationState = Nothing
+        , newName = ""
+        , newPassword = ""
+        }
+  | (loginFocusButton screen) == (Just Enter) && 
+                                 (length (name screen) > 0) && 
+                                 (length (password screen) > 0) 
+      = ScreenMainMenu MainMenuScreen 
+        { menuFocusButton = Nothing
+        , gameType = PlayersGame
+        }
+  | otherwise 
+      = ScreenLogin LoginScreen 
+        { loginFocusButton = changeLoginButton point --Nothing
+        , loginState = Nothing
+        , name = (name screen)
+        , password = (password screen)
+        }
+changeLoginScreen _ screen = screen
+
+-- | Была нажата кнопка мыши на экране регистрации => сменить экран
+changeRegistrationScreen :: Point -> Screen -> Screen
+changeRegistrationScreen point (ScreenRegistration screen) 
+  | (registrationButton screen) == Nothing 
+      = ScreenRegistration RegistrationScreen 
+        { registrationButton = Nothing
+        , registrationState = Nothing
+        , newName = (newName screen)
+        , newPassword = (newPassword screen)
+        }
+  | (registrationButton screen) == (Just LoginRegistration) 
+      = ScreenRegistration RegistrationScreen 
+        { registrationButton = (Just LoginRegistration)
+        , registrationState = (Just LoginState)
+        , newName = (newName screen)
+        , newPassword = (newPassword screen)
+        }
+  | (registrationButton screen) == (Just PasswordRegistration) 
+      = ScreenRegistration RegistrationScreen 
+        { registrationButton = (Just PasswordRegistration)
+        , registrationState = (Just PasswordState)
+        , newName = (newName screen)
+        , newPassword = (newPassword screen)
+        }
+  | (registrationButton screen) == (Just EnterRegistration) && 
+                                   (length (newName screen) > 0) && 
+                                   (length (newPassword screen) > 0) 
+      = ScreenLogin LoginScreen  
+        { loginFocusButton = Nothing
+        , loginState = Nothing
+        , name = "" --(name screen)
+        , password = "" -- (password screen)
+        }
+  | (registrationButton screen) == (Just ExitRegistration) 
+      = ScreenLogin LoginScreen  
+        { loginFocusButton = Nothing
+        , loginState = Nothing
+        , name = ""
+        , password = ""
+        }
+   | otherwise 
+      = ScreenRegistration RegistrationScreen 
+        { registrationButton = changeRegistrationButton point
+        , registrationState = Nothing
+        , newName = (newName screen)
+        , newPassword = (newPassword screen)
+        }
+changeRegistrationScreen _ screen = screen
+
+-- | Была нажата кнопка мыши на экране главного меню => сменить экран
+changeMainMenuScreen :: Screen -> Screen
+changeMainMenuScreen (ScreenMainMenu screen) =
+  case (menuFocusButton screen) of
+    Nothing -> ScreenMainMenu MainMenuScreen 
+      { menuFocusButton = Nothing
+      , gameType = (gameType screen)
+      }
+    (Just NewGame) -> ScreenGame initGame 
+    (Just Records) -> ScreenRecords RecordsScreen 
+      { recordsButton = Nothing
+      , recordsGameType = (gameType screen)
+      }
+    (Just Settings) -> ScreenSettings SettingsScreen  
+      { settingsButton = Nothing
+      , settingsGameType = (gameType screen)
+      }
+changeMainMenuScreen screen = screen
+
+-- | Была нажата кнопка мыши на экране рекордов => сменить экран
+changeRecordsScreen :: Screen -> Screen
+changeRecordsScreen (ScreenRecords screen) =
+  case (recordsButton screen) of
+    Nothing -> ScreenRecords RecordsScreen 
+      { recordsButton = Nothing
+      , recordsGameType = (recordsGameType screen)
+      }
+    (Just ExitRecords) -> ScreenMainMenu MainMenuScreen 
+      { menuFocusButton = Nothing
+      , gameType = (recordsGameType screen)
+      }
+changeRecordsScreen screen = screen
+
+-- | Была нажата кнопка мыши на экране настроек => сменить экран
+changeSettingsScreen :: Screen -> Screen
+changeSettingsScreen (ScreenSettings screen) =
+  case (settingsButton screen) of
+    Nothing -> ScreenSettings SettingsScreen 
+      { settingsButton = Nothing
+      , settingsGameType = (settingsGameType screen)
+      }
+    (Just ExitSettings) -> ScreenMainMenu MainMenuScreen 
+      { menuFocusButton = Nothing
+      , gameType = (settingsGameType screen)
+      }
+    (Just AIGameType) -> ScreenSettings SettingsScreen 
+      { settingsButton = (Just AIGameType)
+      , settingsGameType = AIGame
+      }
+    (Just PlayersGameType) -> ScreenSettings SettingsScreen 
+      { settingsButton = (Just PlayersGameType)
+      , settingsGameType = PlayersGame
+      }
+changeSettingsScreen screen = screen
+
+-- | Курсор изменил положение => изменить состояние
+checkScreen :: Point -> Screen -> Screen
+checkScreen point (ScreenLogin screen) = 
+  ScreenLogin LoginScreen 
+    { loginFocusButton = changeLoginButton point
+    , loginState = (loginState screen)
+    , name = (name screen)
+    , password = (password screen)
+    }
+checkScreen point (ScreenRegistration screen) = 
+  ScreenRegistration RegistrationScreen 
+    { registrationButton = changeRegistrationButton point
+    , registrationState = (registrationState screen)
+    , newName = (newName screen)
+    , newPassword = (newPassword screen)
+    }
+checkScreen point (ScreenMainMenu screen) = 
+  ScreenMainMenu MainMenuScreen 
+    { menuFocusButton = changeMainMenuButton point
+    , gameType = (gameType screen)
+    }
+checkScreen point (ScreenRecords screen) = 
+  ScreenRecords RecordsScreen 
+    { recordsButton = changeRecordsButton point
+    , recordsGameType = (recordsGameType screen)
+    }
+checkScreen point (ScreenSettings screen) = 
+  ScreenSettings SettingsScreen 
+    { settingsButton = changeSettingsButton point
+    , settingsGameType = (settingsGameType screen) 
+    }
+checkScreen _ screen = screen
+
+-- | Обработка события на экране ввода логина и пароля
+handleLoginScreen :: Event -> Screen -> Screen
+handleLoginScreen (EventKey (MouseButton LeftButton) _ _ mouse) screen 
+  = changeLoginScreen mouse screen
+handleLoginScreen (EventMotion mouse) screen = checkScreen mouse screen
+handleLoginScreen (EventKey (Char c) Down _ _ ) screen = readStr c screen
+handleLoginScreen (EventKey (SpecialKey KeyDelete) _ _ _ ) screen 
+  = deleteKey screen
+handleLoginScreen _ screen = screen
+
+-- | Обработка события на экране главного меню
+handleMainMenuScreen :: Event -> Screen -> Screen
+handleMainMenuScreen (EventKey (MouseButton LeftButton) _ _ _) screen 
+  = changeMainMenuScreen screen
+handleMainMenuScreen (EventMotion mouse) screen = checkScreen mouse screen
+handleMainMenuScreen _ screen = screen
+
+-- | Обработка события на экране регистрации
+handleRegistrationScreen :: Event -> Screen -> Screen
+handleRegistrationScreen (EventKey (MouseButton LeftButton) _ _ mouse) screen 
+  = changeRegistrationScreen mouse screen
+handleRegistrationScreen (EventMotion mouse) screen = checkScreen mouse screen
+handleRegistrationScreen (EventKey (Char c) Down _ _ ) screen = readStr c screen
+handleRegistrationScreen (EventKey (SpecialKey KeyDelete) _ _ _ ) screen 
+  = deleteKey screen
+handleRegistrationScreen _ screen = screen
+
+-- | Обработка события на экране рекордов
+handleRecordsScreen :: Event -> Screen -> Screen
+handleRecordsScreen (EventKey (MouseButton LeftButton) _ _ _) screen 
+  = changeRecordsScreen screen
+handleRecordsScreen (EventMotion mouse) screen = checkScreen mouse screen
+handleRecordsScreen _ screen = screen
+
+-- | Обработка события на экране настроек
+handleSettingsScreen :: Event -> Screen -> Screen
+handleSettingsScreen (EventKey (MouseButton LeftButton) _ _ _) screen 
+  = changeSettingsScreen screen
+handleSettingsScreen (EventMotion mouse) screen = checkScreen mouse screen
+handleSettingsScreen _ screen = screen
+
+
+-- | Обработка события
 handleScreen :: Event -> Screen -> Screen
-handleScreen event screen =
-    case screenState screen of
-       FirstScreenState -> Screen 
-             { screenState = makeScreenState event screen
-             , user = (user screen)  -- ("", "")
-             , firstScreen = handleFirstScreen event (firstScreen screen)
-             , secondScreen = (secondScreen screen) 
-             , registrationScreen = RegistrationScreen { stateRegistration = NoRegistrationState
-                                                       , newName = ""
-                                                       , newPassword = ""
-                                                       }
-             , recordsScreen = (recordsScreen screen)
-             , settingsScreen = (settingsScreen screen)
-             , game = (game screen)
-             }
-       SecondScreenState -> Screen 
-             { screenState = makeScreenState event screen 
-             , user = (user screen)  -- ("", "")
-             , firstScreen = (firstScreen screen)
-             , secondScreen = handleSecondScreen event (secondScreen screen)
-             , registrationScreen = (registrationScreen screen)
-             , recordsScreen = RecordsScreen { stateRecords = NoRecordsState
-                                             , users = (users (recordsScreen screen))
-                                             }
-             , settingsScreen = SettingsScreen { stateSettings = NoSettingsState
-                                               , gameType = (gameType (settingsScreen screen))
-                                               }
-             , game = (game screen)
-             }
-       RegistrationScreenState -> Screen 
-             { screenState = makeScreenState event screen
-             , user = (user screen)  -- ("", "")
-             , firstScreen = (firstScreen screen)
-             , secondScreen = (secondScreen screen) 
-             , registrationScreen = handleRegistrationScreen event (registrationScreen screen)
-             , recordsScreen = (recordsScreen screen)
-             , settingsScreen = (settingsScreen screen)
-             , game = (game screen)
-             }
-       RecordsScreenState -> Screen 
-             { screenState = makeScreenState event screen
-             , user = (user screen)  -- ("", "")
-             , firstScreen = (firstScreen screen)
-             , secondScreen = (secondScreen screen) 
-             , registrationScreen = (registrationScreen screen)
-             , recordsScreen = handleRecordsScreen event (recordsScreen screen)
-             , settingsScreen = (settingsScreen screen)
-             , game = (game screen)
-             }
-       SettingsScreenState -> Screen 
-             { screenState = makeScreenState event screen
-             , user = (user screen)  -- ("", "")
-             , firstScreen = (firstScreen screen)
-             , secondScreen = (secondScreen screen) 
-             , registrationScreen = (registrationScreen screen)
-             , recordsScreen = (recordsScreen screen)
-             , settingsScreen = handleSettingsScreen event (settingsScreen screen)
-             , game = (game screen)
-             }
-       GameScreenState -> Screen 
-             { screenState = GameScreenState
-             , user = (user screen)  -- ("", "")
-             , firstScreen = (firstScreen screen)
-             , secondScreen = (secondScreen screen) 
-             , registrationScreen = (registrationScreen screen)
-             , recordsScreen = (recordsScreen screen)
-             , settingsScreen = (settingsScreen screen)
-             , game = handleGame event (game screen)
-             }
+handleScreen (EventKey (Char _) Down _ _ ) (ScreenGame _) 
+  = ScreenMainMenu MainMenuScreen 
+    { menuFocusButton = Nothing
+    , gameType = PlayersGame
+    }
+handleScreen event (ScreenGame game) 
+  = ScreenGame (handleGame event game)
+handleScreen event (ScreenLogin loginScreen) 
+  = handleLoginScreen event (ScreenLogin LoginScreen
+    { loginFocusButton = (loginFocusButton loginScreen)
+    , loginState = (loginState loginScreen)
+    , name = (name loginScreen)
+    , password = (password loginScreen)
+    })
+handleScreen event (ScreenMainMenu menuScreen) 
+  = handleMainMenuScreen event (ScreenMainMenu MainMenuScreen
+    { menuFocusButton = (menuFocusButton menuScreen)
+    , gameType = (gameType menuScreen)
+    })
+handleScreen event (ScreenRecords recordsScreen) 
+  = handleRecordsScreen event (ScreenRecords RecordsScreen
+    { recordsButton = (recordsButton recordsScreen)
+    , recordsGameType = (recordsGameType recordsScreen)
+     })
+handleScreen event (ScreenSettings settingsScreen) 
+  = handleSettingsScreen event (ScreenSettings SettingsScreen
+    { settingsButton = (settingsButton settingsScreen)
+    , settingsGameType = (settingsGameType settingsScreen)
+    })
+handleScreen event (ScreenRegistration regScreen) 
+  = handleRegistrationScreen event (ScreenRegistration RegistrationScreen
+    { registrationButton = (registrationButton regScreen)
+    , registrationState = (registrationState regScreen)
+    , newName = (newName regScreen)
+    , newPassword = (newPassword regScreen)
+    })
+--handleScreen _ screen = screen
 
-makeScreenState :: Event -> Screen -> ScreenState
-makeScreenState event screen | (screenState screen) == GameScreenState = GameScreenState
-                             | otherwise = (analyseScreenState1 event screen)
+-- | Нажат delete - удалить последней символ
+deleteKey :: Screen -> Screen
+deleteKey (ScreenLogin screen) 
+  | (loginState screen) == (Just LoginState) 
+    = ScreenLogin LoginScreen 
+      { loginFocusButton = (loginFocusButton screen)
+      , loginState = (loginState screen)
+      , name = deleteLastChar (name screen)
+      , password = (password screen)
+      }
+  | (loginState screen) == (Just PasswordState) 
+    = ScreenLogin LoginScreen 
+      { loginFocusButton = (loginFocusButton screen)
+      , loginState = (loginState screen)
+      , name = (name screen)
+      , password = deleteLastChar (password screen)
+      }
+deleteKey (ScreenRegistration regScreen) 
+  | (registrationState regScreen) == (Just LoginState) 
+    = ScreenRegistration RegistrationScreen 
+      { registrationButton = (registrationButton regScreen)
+      , registrationState = (registrationState regScreen)
+      , newName = deleteLastChar (newName regScreen)
+      , newPassword = (newPassword regScreen)
+      }
+  | (registrationState regScreen) == (Just PasswordState) 
+    = ScreenRegistration RegistrationScreen 
+      { registrationButton = (registrationButton regScreen)
+      , registrationState = (registrationState regScreen)
+      , newName = (newName regScreen)
+      , newPassword = deleteLastChar (newPassword regScreen)
+      }
+deleteKey screen = screen
 
-analyseScreenState1 :: Event -> Screen -> ScreenState
-analyseScreenState1 (EventKey (MouseButton LeftButton) _ _ mouse) screen 
-          | ((state1 (firstScreen screen)) == Enter) = analyseScreenState2 screen
-          | ((state1 (firstScreen screen)) == Registration) = analyseScreenStateRegistration screen
-          | otherwise  = FirstScreenState
-analyseScreenState1 _ screen = (screenState screen)
+-- | Удаление последнего символа данной строки
+deleteLastChar :: String -> String
+deleteLastChar "" = ""
+deleteLastChar (_ : []) = []
+deleteLastChar (x : xs) = x : deleteLastChar xs
 
-analyseScreenStateRegistration :: Screen -> ScreenState
-analyseScreenStateRegistration screen
-          | (stateRegistration (registrationScreen screen)) == NoRegistrationState = RegistrationScreenState
-          | (stateRegistration (registrationScreen screen)) == EnterRegistration = SecondScreenState
-          | (stateRegistration (registrationScreen screen)) == ExitRegistration = FirstScreenState
-          | otherwise = RegistrationScreenState
-
-analyseScreenState2 :: Screen -> ScreenState
-analyseScreenState2 screen 
-          | (state2 (secondScreen screen)) == NoSecondState = SecondScreenState
-          | (state2 (secondScreen screen)) == NewGame = GameScreenState
-          | (state2 (secondScreen screen)) == Records = analyseRecordsState screen
-          | (state2 (secondScreen screen)) == Settings = analyseSettingsState screen
-          | otherwise  = SecondScreenState
-
-analyseRecordsState :: Screen -> ScreenState
-analyseRecordsState screen | (stateRecords (recordsScreen screen)) == ExitRecords = SecondScreenState
-                           | otherwise = RecordsScreenState
-
-analyseSettingsState :: Screen -> ScreenState
-analyseSettingsState screen | (stateSettings (settingsScreen screen)) == ExitSettings = SecondScreenState
-                            | otherwise = SettingsScreenState
+-- | Считываем и записываем символ
+readStr :: Char -> Screen -> Screen
+readStr c (ScreenLogin screen) 
+  | (loginState screen) == (Just LoginState) 
+    = ScreenLogin LoginScreen 
+      { loginFocusButton = (loginFocusButton screen)
+      , loginState = (loginState screen)
+      , name = (name screen) ++ (c : [])
+      , password = (password screen)
+      }
+  | (loginState screen) == (Just PasswordState) 
+    = ScreenLogin LoginScreen 
+      { loginFocusButton = (loginFocusButton screen)
+      , loginState = (loginState screen)
+      , name = (name screen)
+      , password = (password screen) ++ (c : [])
+      }
+readStr c (ScreenRegistration regScreen) 
+  | (registrationState regScreen) == (Just LoginState) 
+    = ScreenRegistration RegistrationScreen 
+      { registrationButton = (registrationButton regScreen)
+      , registrationState = (registrationState regScreen)
+      , newName = (newName regScreen) ++ (c : [])
+      , newPassword = (newPassword regScreen)
+      }
+  | (registrationState regScreen) == (Just PasswordState) 
+    = ScreenRegistration RegistrationScreen 
+      { registrationButton = (registrationButton regScreen)
+      , registrationState = (registrationState regScreen)
+      , newName = (newName regScreen)
+      , newPassword = (newPassword regScreen) ++ (c : [])
+      }
+readStr _ screen = screen 
 
 updateScreen :: Float -> Screen -> Screen
 updateScreen _ = id
 
-----------------------------------------------
-
-initFirstScreen :: FirstScreen
-initFirstScreen = FirstScreen
-  { state1 = NoFirstState
---  , tryUser = ("", "")
-  , name = ""
-  , password = "" 
-  }
-
-initSecondScreen :: SecondScreen
-initSecondScreen = SecondScreen
-  { state2 = NoSecondState
---  , tryUser = ("", "")
-  }
-
-initRegistrationScreen :: RegistrationScreen
-initRegistrationScreen = RegistrationScreen
-  { stateRegistration = NoRegistrationState
-  , newName = ""
-  , newPassword = ""
-  }
-
-initRecordsScreen :: RecordsScreen
-initRecordsScreen = RecordsScreen
-  { stateRecords = NoRecordsState
-  , users = []
-  }
-
-initSettingsScreen :: SettingsScreen
-initSettingsScreen = SettingsScreen
-  { stateSettings = NoSettingsState
-  , gameType = PlayersGame
-  }
-
 ----------------------   D R A W     S C R E E N S   ------------------------------
-menuItemWidth :: Float   -- Ширина
+-- | Ширина пункта меню
+menuItemWidth :: Float 
 menuItemWidth = 200.0
 
-menuItemHeight :: Float  -- Высота
+-- | Высота пункта меню
+menuItemHeight :: Float 
 menuItemHeight = 50.0
 
+-- | Ширина сжатия текста
 strScaleWidth :: Float
 strScaleWidth = 0.20
 
+-- | Высота сжатия текста
 strScaleHeight :: Float
 strScaleHeight = 0.15
 
+-- | Высота расположения поля ввода логина
 loginHeight :: Float
 loginHeight = 150
 
+-- | Высота расположения поля ввода пароля
 passwordHeight :: Float
 passwordHeight = 40
 
+-- | Длина строки с именем
 nameLength :: Float
 nameLength = 10
 
+-- | Длина строки с паролем
 passwordLength :: Float
 passwordLength = 10
 
+-- | Высота расположения кнопки Enter
 enterHeight :: Float
 enterHeight = -80
 
+-- | Высота расположения кнопки Registration
 registrationHeight :: Float
 registrationHeight = -150
 
+-- | Высота расположения кнопки New game
 newGameHeight :: Float
 newGameHeight = 130
 
+-- | Высота расположения кнопки Record
 recordsHeight :: Float
 recordsHeight = 60
 
+-- | Высота расположения кнопки Settings
 settingsHeight :: Float
 settingsHeight = -10
 
+-- | Высота расположения кнопки Exit
 exitHeight :: Float
 exitHeight = -200
 
+-- | Высота расположения заголовков
 headerHeight :: Float
 headerHeight = 190
 
+-- | Отступ слева при записи рекордов
 recordsIndent :: Float
 recordsIndent = -220
 
+-- | Высота первого рекорда
 firstRecordHeight :: Float
 firstRecordHeight = 150
 
+-- | Высота настроек
 gameTypeSettingsHeight :: Float
 gameTypeSettingsHeight = 150
 
+-- | Координата настроек игры
 gameTypeStrX :: Float
 gameTypeStrX = -200
 
+-- | Координата кнопок настроек игры
 gameTypeVarX :: Float
 gameTypeVarX = -10
 
+-- | Цвет кнопок
 buttonColor :: Color
 buttonColor = makeColorI 220 220 190 255 
   --  245 245 220 255 Цвет фона
 
-drawFirstScreen :: FirstScreen -> Picture
-drawFirstScreen screen = pictures [drawLogin (name screen)
-                                  , drawPassword (password screen)
-                                  , drawEnter
-                                  , drawRegistration
-                                  , firstStateBorder (state1 screen)
-                                  , allocateBorder1 (state1 screen)
-                                  ]
+-- | Отрисовка экрана ввода логина и пароля
+drawLoginScreen :: LoginScreen -> Picture
+drawLoginScreen screen = pictures 
+  [ drawLogin (name screen)
+  , drawPassword (password screen)
+  , drawEnter
+  , drawRegistration
+  , writeBorder (loginState screen)
+  , allocateBorder1 (loginFocusButton screen)
+  ]
 
-drawSecondScreen :: SecondScreen -> Picture
-drawSecondScreen screen = pictures [drawNewGame
-                                   , drawRecords
-                                   , drawSettings
-                                   , allocateBorder2 (state2 screen)
-                                   ]
-
-firstStateBorder :: FirstScreenState -> Picture
-firstStateBorder state | state == Login = translate (-menuItemWidth / 2) loginHeight drawMenuBorder
-                  | state == Password = translate (-menuItemWidth / 2) passwordHeight drawMenuBorder
-                  | otherwise = blank
-
-               -- Прямоугольник по координатам
+-- | Отрисовка главного меню
+drawMainMenuScreen :: MainMenuScreen -> Picture
+drawMainMenuScreen screen = pictures 
+  [ drawNewGame
+  , drawRecords
+  , drawSettings
+  , allocateBorder2 (menuFocusButton screen)
+  ]
+                                           
+-- | Построение прямоугольника по координатам
 drawItem :: Float -> Float -> Color -> Picture
 drawItem x0 y0 myColor = picture
-   where
-      picture = color myColor figure
-      figure = polygon [(x0, y0), (x0 + menuItemWidth, y0), 
-                        (x0 + menuItemWidth, y0 + menuItemHeight), (x0, y0 + menuItemHeight)]
+  where
+    picture = color myColor figure
+    figure = polygon 
+      [ (x0, y0)
+      , (x0 + menuItemWidth, y0)
+      , (x0 + menuItemWidth, y0 + menuItemHeight)
+      , (x0, y0 + menuItemHeight)
+      ]
 
 
-               -- Прямоугольник - пункт меню
+-- | Построение прямоугольника - пункта меню
 drawMenuItem :: Float -> Color -> Picture
 drawMenuItem height myColor = translate (-menuItemWidth / 2) height picture
-   where
-      picture = color myColor figure
-      figure = polygon [(0.0, 0.0), (menuItemWidth, 0.0), 
-                        (menuItemWidth, menuItemHeight), (0.0, menuItemHeight)]
+  where
+    picture = color myColor figure
+    figure = polygon 
+      [ (0.0, 0.0)
+      , (menuItemWidth, 0.0)
+      , (menuItemWidth, menuItemHeight)
+      , (0.0, menuItemHeight)
+      ]
 
-               -- Окно ввода логина
+-- | Отрисовка окна ввода логина
 drawLogin :: Name -> Picture
-drawLogin name = pictures [(drawMenuItem loginHeight white)
-                          , writeMenuStr (fromIntegral (length name)) height name
-                          , writeMenuStr 5 (loginHeight - 100*strScaleHeight) "Login"
-                          ]
-   where
-      height = loginHeight + menuItemHeight / 2.5
+drawLogin str = pictures 
+  [ (drawMenuItem loginHeight white)
+  , writeMenuStr (fromIntegral (length str)) height str
+  , writeMenuStr 5 (loginHeight - 100*strScaleHeight) "Login"
+  ]
+  where
+    height = loginHeight + menuItemHeight / 2.5
 
-               -- Окно ввода пароля
+-- | Отрисовка окна ввода пароля
 drawPassword :: Password -> Picture
-drawPassword password = pictures [(drawMenuItem passwordHeight white)
-                                 , writeMenuStr (fromIntegral (length password)) height password
-                                 , writeMenuStr 8 (passwordHeight - 100*strScaleHeight) "Password"
-                                 ]
-   where
-      height = passwordHeight + menuItemHeight / 2.5
+drawPassword str = pictures 
+  [ (drawMenuItem passwordHeight white)
+  , writeMenuStr (fromIntegral (length str)) height str
+  , writeMenuStr 8 (passwordHeight - 100*strScaleHeight) "Password"
+  ]
+  where
+    height = passwordHeight + menuItemHeight / 2.5
 
-               -- Вход
+-- | Отрисовка кнопки Enter
 drawEnter :: Picture
-drawEnter = pictures [(drawMenuItem enterHeight buttonColor)
-                     , writeMenuStr 5 height "Enter"
-                     ]
-   where
-      height = enterHeight + menuItemHeight / 2.5
+drawEnter = pictures 
+  [ (drawMenuItem enterHeight buttonColor)
+  , writeMenuStr 5 height "Enter"
+  ]
+  where
+    height = enterHeight + menuItemHeight / 2.5
 
-               -- Регистрация
+-- | Отрисовка кнопки Registration 
 drawRegistration :: Picture
-drawRegistration = pictures [(drawMenuItem registrationHeight buttonColor)
-                            , writeMenuStr 12 height "Registration"
-                            ]
-   where
-      height = registrationHeight + menuItemHeight / 2.5
+drawRegistration = pictures 
+  [ (drawMenuItem registrationHeight buttonColor)
+  , writeMenuStr 12 height "Registration"
+  ]
+  where
+    height = registrationHeight + menuItemHeight / 2.5
 
-               -- Новая игра
+-- | Отрисовка кнопки New game
 drawNewGame :: Picture
-drawNewGame = pictures [(drawMenuItem newGameHeight buttonColor)
-                       , writeMenuStr 8 height "New game"
-                       ]
-   where
-      height = newGameHeight + menuItemHeight / 2.5
+drawNewGame = pictures 
+  [ (drawMenuItem newGameHeight buttonColor)
+  , writeMenuStr 8 height "New game"
+  ]
+  where
+    height = newGameHeight + menuItemHeight / 2.5
 
-               -- Рекорды
+-- | Отрисовка кнопки Records
 drawRecords :: Picture
-drawRecords = pictures [(drawMenuItem recordsHeight buttonColor)
-                       , writeMenuStr 7 height "Records"
-                       ]
-   where
-      height = recordsHeight + menuItemHeight / 2.5
+drawRecords = pictures 
+  [ (drawMenuItem recordsHeight buttonColor)
+  , writeMenuStr 7 height "Records"
+  ]
+  where
+    height = recordsHeight + menuItemHeight / 2.5
 
-               -- Настройки
+-- | Отрисовка кнопки Settings
 drawSettings :: Picture
-drawSettings = pictures [(drawMenuItem settingsHeight buttonColor)
-                        , writeMenuStr 8 height "Settings"
-                        ]
-   where
-      height = settingsHeight + menuItemHeight / 2.5
+drawSettings = pictures 
+  [ (drawMenuItem settingsHeight buttonColor)
+  , writeMenuStr 8 height "Settings"
+  ]
+  where
+    height = settingsHeight + menuItemHeight / 2.5
 
-               -- Подпись меню
+-- | Подпись в меню
 writeMenuStr :: Float -> Float -> String -> Picture
 writeMenuStr letters height str = translate x height (scale strScaleWidth strScaleHeight picture)
-   where
-      picture = color black (text str)
-      x = -letters * 13 / 2 
+  where
+    picture = color black (text str)
+    x = -letters * 13 / 2 
 
-               -- Подпись
+-- | Подпись
 writeStr :: Float -> Float -> String -> Picture
 writeStr x y str = translate x y (scale strScaleWidth strScaleHeight picture)
-   where
-      picture = color black (text str)
+  where
+    picture = color black (text str)
 
-
+-- | Отрисовка границы пункта меню
 drawMenuBorder :: Picture
-drawMenuBorder = color black (line [(0.0, 0.0), (menuItemWidth, 0.0), 
-                                     (menuItemWidth, menuItemHeight), (0.0, menuItemHeight), (0.0, 0.0)])
+drawMenuBorder = color black (line [ (0.0, 0.0)
+                                   , (menuItemWidth, 0.0)
+                                   , (menuItemWidth, menuItemHeight)
+                                   , (0.0, menuItemHeight), (0.0, 0.0)
+                                   ]
+                             )
 
-allocateBorder1 :: FirstScreenState -> Picture
-allocateBorder1 Enter = translate (-menuItemWidth / 2) enterHeight drawMenuBorder
-allocateBorder1 EnterBorder = translate (-menuItemWidth / 2) enterHeight drawMenuBorder
-allocateBorder1 RegistrationBorder = translate (-menuItemWidth / 2) registrationHeight drawMenuBorder
-allocateBorder1 LoginBorder = translate (-menuItemWidth / 2) loginHeight drawMenuBorder
-allocateBorder1 PasswordBorder = translate (-menuItemWidth / 2) passwordHeight drawMenuBorder
-allocateBorder1 _ = blank
+-- | Граница кнопки экрана ввода логина и пароля
+allocateBorder1 :: Maybe LoginButton -> Picture
+allocateBorder1 Nothing             = blank
+allocateBorder1 (Just Login)        = translate (-menuItemWidth / 2) loginHeight drawMenuBorder
+allocateBorder1 (Just Password)     = translate (-menuItemWidth / 2) passwordHeight drawMenuBorder
+allocateBorder1 (Just Registration) = translate (-menuItemWidth / 2) registrationHeight drawMenuBorder
+allocateBorder1 (Just Enter)        = translate (-menuItemWidth / 2) enterHeight drawMenuBorder
 
-allocateBorder2 :: SecondScreenState -> Picture
-allocateBorder2 NewGame = translate (-menuItemWidth / 2) newGameHeight drawMenuBorder
-allocateBorder2 NewGameBorder = translate (-menuItemWidth / 2) newGameHeight drawMenuBorder
-allocateBorder2 RecordsBorder = translate (-menuItemWidth / 2) recordsHeight drawMenuBorder
-allocateBorder2 SettingsBorder = translate (-menuItemWidth / 2) settingsHeight drawMenuBorder
-allocateBorder2 _ = blank
-
+-- | Граница кнопки экрана главного меню
+allocateBorder2 :: Maybe MenuButton -> Picture
+allocateBorder2 Nothing         = blank
+allocateBorder2 (Just NewGame)  = translate (-menuItemWidth / 2) newGameHeight drawMenuBorder
+allocateBorder2 (Just Records)  = translate (-menuItemWidth / 2) recordsHeight drawMenuBorder
+allocateBorder2 (Just Settings) = translate (-menuItemWidth / 2) settingsHeight drawMenuBorder
 
 -----------------------------  D R A W   R E G I S T R A T I O N  --------------------------------
 
+-- | Отрисовка экрана регистрации
 drawRegistrationScreen :: RegistrationScreen -> Picture
-drawRegistrationScreen screen = pictures [drawLogin (newName screen)
-                                         , drawPassword (newPassword screen)
-                                         , drawEnter
-                                         , drawExit
-                                         , registrationStateBorder (stateRegistration screen)
-                                         , allocateBorderRegistration (stateRegistration screen)
-                                         ]
+drawRegistrationScreen screen = pictures 
+  [ drawLogin (newName screen)
+  , drawPassword (newPassword screen)
+  , drawEnter
+  , drawExit
+  , writeBorder (registrationState screen)
+  , allocateBorderRegistration (registrationButton screen)
+  ]
 
-registrationStateBorder :: RegistrationScreenState -> Picture
-registrationStateBorder state | state == LoginRegistration = translate (-menuItemWidth / 2) loginHeight drawMenuBorder
-                              | state == PasswordRegistration = translate (-menuItemWidth / 2) passwordHeight drawMenuBorder
-                              | otherwise = blank
+-- | Отрисовка границы поля ввода
+writeBorder :: Maybe WriteState -> Picture
+writeBorder Nothing              = blank
+writeBorder (Just LoginState)    = translate (-menuItemWidth / 2) loginHeight drawMenuBorder
+writeBorder (Just PasswordState) = translate (-menuItemWidth / 2) passwordHeight drawMenuBorder
 
-allocateBorderRegistration :: RegistrationScreenState -> Picture
-allocateBorderRegistration EnterRegistration = translate (-menuItemWidth / 2) enterHeight drawMenuBorder
-allocateBorderRegistration EnterRegistrationBorder = translate (-menuItemWidth / 2) enterHeight drawMenuBorder
-allocateBorderRegistration LoginRegistrationBorder = translate (-menuItemWidth / 2) loginHeight drawMenuBorder
-allocateBorderRegistration PasswordRegistrationBorder = translate (-menuItemWidth / 2) passwordHeight drawMenuBorder
-allocateBorderRegistration _ = blank
+-- | Граница кнопки экрана регистрации
+allocateBorderRegistration :: Maybe RegistrationButton -> Picture
+allocateBorderRegistration Nothing                     = blank
+allocateBorderRegistration (Just EnterRegistration)    = translate (-menuItemWidth / 2) enterHeight drawMenuBorder
+allocateBorderRegistration (Just ExitRegistration)     = translate (-menuItemWidth / 2) exitHeight drawMenuBorder
+allocateBorderRegistration (Just LoginRegistration)    = translate (-menuItemWidth / 2) loginHeight drawMenuBorder
+allocateBorderRegistration (Just PasswordRegistration) = translate (-menuItemWidth / 2) passwordHeight drawMenuBorder
 
 
 -----------------------------  D R A W   R E C O R D S  --------------------------------
 
+-- | Отрисовка экрана регистрации
 drawRecordsScreen :: RecordsScreen -> Picture
-drawRecordsScreen screen = pictures [ drawHeader "Records"
-                                    , drawExit
-                                    , writeRecords 
-                                    , allocateBorderRecords (stateRecords screen)
-                                    ]
+drawRecordsScreen screen = pictures 
+  [ drawHeader "Records"
+  , drawExit
+  , writeRecords 
+  , allocateBorderRecords (recordsButton screen)
+  ]
 
-allocateBorderRecords :: RecordsScreenState -> Picture
-allocateBorderRecords ExitRecordsBorder = translate (-menuItemWidth / 2) exitHeight drawMenuBorder
-allocateBorderRecords _ = blank
+-- | Граница кнопки экрана рекордов
+allocateBorderRecords :: Maybe RecordsButton -> Picture
+allocateBorderRecords Nothing = blank
+allocateBorderRecords (Just ExitRecords) = translate (-menuItemWidth / 2) exitHeight drawMenuBorder
 
+-- | Забираем список рекордов
 writeRecords :: Picture
 writeRecords = writeListRecords initUsers 0 -- queryTableRec
 
+-- | Это не нужно
 initUsers :: Users
 initUsers = initUser1 : initUser2 : initUser1 : initUser3 : initUser4 : initUser2 : []
 
+-- | Это не нужно
 initUser1 :: User
 initUser1 = ("abc", "15")
 
+-- | Это не нужно
 initUser2 :: User
 initUser2 = ("1234567890", "1234567890")
 
+-- | Это не нужно
 initUser3 :: User
 initUser3 = ("defs", "1df5")
 
+-- | Это не нужно
 initUser4 :: User
 initUser4 = ("1234jh", "4567890")
 
+-- | Пишем список рекордов
 writeListRecords :: Users -> Float -> Picture
 writeListRecords [] _ = blank
-writeListRecords ((name1, password1):xs) num | num < 5 = pictures [ pictureName1 
-                                                                  , pictureName2
-                                                                  , pictureScore 
-                                                                  , writeListRecords xs (num + 1)
-                                                                  ]
-                                             | otherwise = blank
-   where
-      pictureName1 = translate recordsIndent y scalePictureName
-      pictureName2 = translate (recordsIndent + nameLength*16) y scalePictureName
-      pictureScore = translate (recordsIndent + nameLength*32) y scalePictureScore
-      scalePictureName = (scale strScaleWidth strScaleHeight (color black (text name1)))
-      scalePictureScore = (scale strScaleWidth strScaleHeight (color black (text password1)))
-      y = firstRecordHeight - 50*num
+writeListRecords ((name1, password1):xs) num 
+  | num < 5 = pictures 
+    [ pictureName1 
+    , pictureName2
+    , pictureScore 
+    , writeListRecords xs (num + 1)
+    ]
+  | otherwise = blank
+  where
+    pictureName1 = translate recordsIndent y scalePictureName
+    pictureName2 = translate (recordsIndent + nameLength*16) y scalePictureName
+    pictureScore = translate (recordsIndent + nameLength*32) y scalePictureScore
+    scalePictureName  = (scale strScaleWidth strScaleHeight (color black (text name1)))
+    scalePictureScore = (scale strScaleWidth strScaleHeight (color black (text password1)))
+    y = firstRecordHeight - 50*num
 
 
 -----------------------------  D R A W   S E T T I N G S  --------------------------------
 
+-- | Отрисовка экрана настроек
 drawSettingsScreen :: SettingsScreen -> Picture
-drawSettingsScreen screen = pictures [ drawHeader "Settings"
-                                     , drawExit
-                                     , writeGameType
-                                     , gameTypeSelectedBorder (gameType screen)
-                                     , allocateBorderSettings (stateSettings screen)
-                                     ]
+drawSettingsScreen screen = pictures 
+  [ drawHeader "Settings"
+  , drawExit
+  , writeGameType
+  , gameTypeSelectedBorder (settingsGameType screen)
+  , allocateBorderSettings (settingsButton screen)
+  ]
 
-allocateBorderSettings :: SettingsScreenState -> Picture
-allocateBorderSettings ExitSettingsBorder = translate (-menuItemWidth / 2) exitHeight drawMenuBorder
-allocateBorderSettings PlayersGameBorder = translate x y1 drawMenuBorder
-   where
-      x = gameTypeVarX - 10
-      y1 = gameTypeSettingsHeight - 20
-allocateBorderSettings AIGameBorder = translate x y2 drawMenuBorder
-   where
-      x = gameTypeVarX - 10
-      y2 = gameTypeSettingsHeight - menuItemHeight - 30
-allocateBorderSettings _ = blank
+-- | Граница кнопки экрана настроек
+allocateBorderSettings :: Maybe SettingsButton -> Picture
+allocateBorderSettings (Just ExitSettings)    
+  = translate (-menuItemWidth / 2) exitHeight drawMenuBorder
+allocateBorderSettings (Just PlayersGameType) 
+  = translate x y1 drawMenuBorder
+  where
+    x = gameTypeVarX - 10
+    y1 = gameTypeSettingsHeight - 20
+allocateBorderSettings (Just AIGameType) = translate x y2 drawMenuBorder
+  where
+    x = gameTypeVarX - 10
+    y2 = gameTypeSettingsHeight - menuItemHeight - 30
+allocateBorderSettings Nothing = blank
 
 
+-- | Граница кнопки выбранной настройки
 gameTypeSelectedBorder :: GameType -> Picture
 gameTypeSelectedBorder PlayersGame = translate x y1 drawMenuBorder
-   where
-      x = gameTypeVarX - 10
-      y1 = gameTypeSettingsHeight - 20
+  where
+    x = gameTypeVarX - 10
+    y1 = gameTypeSettingsHeight - 20
 gameTypeSelectedBorder AIGame = translate x y2 drawMenuBorder
-   where
-      x = gameTypeVarX - 10
-      y2 = gameTypeSettingsHeight - menuItemHeight - 30
+  where
+    x = gameTypeVarX - 10
+    y2 = gameTypeSettingsHeight - menuItemHeight - 30
 
-
+-- | Выписываем названия кнопок настроек игры
 writeGameType :: Picture
-writeGameType = pictures [ drawItem (gameTypeVarX - 10) (gameTypeSettingsHeight - 20) buttonColor
-                         , drawItem (gameTypeVarX - 10) (gameTypeSettingsHeight - menuItemHeight - 30) buttonColor
-                         , writeStr gameTypeStrX gameTypeSettingsHeight "Game type"
-                         , writeStr gameTypeVarX gameTypeSettingsHeight "Two players"
-                         , writeStr gameTypeVarX (gameTypeSettingsHeight - 60) "AI"
-                         ]
-
-               -- Заголовок
+writeGameType = pictures 
+  [ drawItem (gameTypeVarX - 10) (gameTypeSettingsHeight - 20) buttonColor
+  , drawItem (gameTypeVarX - 10) (gameTypeSettingsHeight - menuItemHeight - 30) buttonColor
+  , writeStr gameTypeStrX gameTypeSettingsHeight "Game type"
+  , writeStr gameTypeVarX gameTypeSettingsHeight "Two players"
+  , writeStr gameTypeVarX (gameTypeSettingsHeight - 60) "AI"
+  ]
+  
+-- | Заголовок
 drawHeader :: String -> Picture
 drawHeader str = writeMenuStr (fromIntegral (length str)) height str
-   where
-      height = headerHeight + menuItemHeight / 2.5
+  where
+    height = headerHeight + menuItemHeight / 2.5
 
-               -- Выход
+-- | Выход
 drawExit :: Picture
-drawExit = pictures [(drawMenuItem exitHeight buttonColor)
-                    , writeMenuStr 4 height "Exit"
-                    ]
+drawExit = pictures 
+  [ (drawMenuItem exitHeight buttonColor)
+  , writeMenuStr 4 height "Exit"
+  ]
    where
       height = exitHeight + menuItemHeight / 2.5
 
 ------------------------------------------------------------------------------------------
 
-handleFirstScreen :: Event -> FirstScreen -> FirstScreen
-handleFirstScreen (EventKey (MouseButton LeftButton) _ _ mouse) screen = changeFirstScreen mouse True screen
-handleFirstScreen (EventMotion mouse) screen = changeFirstScreen mouse False screen
-handleFirstScreen _ screen = screen
-
-changeFirstScreen :: Point -> Bool -> FirstScreen -> FirstScreen
-changeFirstScreen point False screen | (state1 screen) == Login = FirstScreen { state1 = Login
-                                                                              , name = (name screen)
-                                                                          --    , name = do {s <- getLine
-                                                                            --               return s} 
-                                                                    --          , name = readName
-                                                                              , password = (password screen)
-                                                                              }
-                                     | (state1 screen) == Password = FirstScreen { state1 = Password
-                                                                                 , name = (name screen)
-                                                                                 , password = (password screen)
-                                                                                 }
-                                     | otherwise = FirstScreen { state1 = changeFirstState point False
-                                                               , name = (name screen)
-                                                               , password = (password screen)
-                                                               }
-changeFirstScreen point True screen = FirstScreen { state1 = changeFirstState point True
-                                                  , name = (name screen)
-                                                  , password = (password screen)
-                                                  }
-
-changeFirstState :: Point -> Bool -> FirstScreenState
-changeFirstState point True | isButtonMenu point enterHeight == True = Enter
-                            | isButtonMenu point loginHeight == True = Login
-                            | isButtonMenu point passwordHeight == True = Password
-                            | isButtonMenu point registrationHeight == True = Registration
-                            | otherwise = NoFirstState
-changeFirstState point False | isButtonMenu point enterHeight == True = EnterBorder
-                             | isButtonMenu point registrationHeight == True = RegistrationBorder
-                             | isButtonMenu point loginHeight == True = LoginBorder
-                             | isButtonMenu point passwordHeight == True = PasswordBorder
-                             | otherwise = NoFirstState
-
---readName :: FirstScreen -> FirstScreen
---readName screen = do str <- getLine
---                     return FirstScreen { state1 = Login
---                              , name = str
---                              , password = (password screen)
---                              }
-
-readName :: IO String
-readName = do
-   s <- getLine
-   return s
-
---readName :: FirstScreen -> Name
---readName screen | (state1 screen) == Login = getName
---                | otherwise = (name screen)
-
-handleRegistrationScreen :: Event -> RegistrationScreen -> RegistrationScreen
-handleRegistrationScreen (EventKey (MouseButton LeftButton) _ _ mouse) screen = changeRegistrationScreen mouse True screen
-handleRegistrationScreen (EventMotion mouse) screen = changeRegistrationScreen mouse False screen
-handleRegistrationScreen _ screen = screen
-
-changeRegistrationScreen :: Point -> Bool -> RegistrationScreen -> RegistrationScreen
-changeRegistrationScreen point False screen 
-       | (stateRegistration screen) == LoginRegistration = 
-                          RegistrationScreen { stateRegistration = LoginRegistration
-                                             , newName = (newName screen)
-                                             , newPassword = (newPassword screen)
-                                             }
-       | (stateRegistration screen) == PasswordRegistration = 
-                          RegistrationScreen { stateRegistration = PasswordRegistration
-                                             , newName = (newName screen)
-                                             , newPassword = (newPassword screen)
-                                             }
-       | otherwise = RegistrationScreen { stateRegistration = changeRegistrationState point False
-                                        , newName = (newName screen)
-                                        , newPassword = (newPassword screen)
-                                        }
-changeRegistrationScreen point True screen = 
-                          RegistrationScreen { stateRegistration = changeRegistrationState point True
-                                             , newName = (newName screen)
-                                             , newPassword = (newPassword screen)
-                                             }
-
-changeRegistrationState :: Point -> Bool -> RegistrationScreenState
-changeRegistrationState point True | isButtonMenu point enterHeight == True = EnterRegistration
-                                   | isButtonMenu point loginHeight == True = LoginRegistration
-                                   | isButtonMenu point passwordHeight == True = PasswordRegistration
-                                   | isButtonMenu point exitHeight == True = ExitRegistration
-                                   | otherwise = NoRegistrationState
-changeRegistrationState point False | isButtonMenu point enterHeight == True = EnterRegistrationBorder
-                                    | isButtonMenu point loginHeight == True = LoginRegistrationBorder
-                                    | isButtonMenu point passwordHeight == True = PasswordRegistrationBorder
-                                    | otherwise = NoRegistrationState
-
-
-
-handleSecondScreen :: Event -> SecondScreen -> SecondScreen
-handleSecondScreen (EventKey (MouseButton LeftButton) _ _ mouse) _ = changeSecondScreen mouse True
-handleSecondScreen (EventMotion mouse) _ = changeSecondScreen mouse False
-handleSecondScreen _ screen = screen
-
-changeSecondScreen :: Point -> Bool -> SecondScreen
-changeSecondScreen point fl = SecondScreen
-  { state2 = changeSecondState point fl
-  --, tryUser = ("", "")
-  }
-
-changeSecondState :: Point -> Bool -> SecondScreenState
-changeSecondState point True | isButtonMenu point newGameHeight == True = NewGame
-                             | isButtonMenu point recordsHeight == True = Records
-                             | isButtonMenu point settingsHeight == True = Settings
-                             | otherwise = NoSecondState
-changeSecondState point False | isButtonMenu point newGameHeight == True = NewGameBorder
-                              | isButtonMenu point recordsHeight == True = RecordsBorder
-                              | isButtonMenu point settingsHeight == True = SettingsBorder
-                              | otherwise = NoSecondState
-
-
-handleRecordsScreen :: Event -> RecordsScreen -> RecordsScreen
-handleRecordsScreen (EventKey (MouseButton LeftButton) _ _ mouse) screen = changeRecordsScreen mouse True screen
-handleRecordsScreen (EventMotion mouse) screen = changeRecordsScreen mouse False screen
-handleRecordsScreen _ screen = screen
-
-changeRecordsScreen :: Point -> Bool -> RecordsScreen -> RecordsScreen
-changeRecordsScreen point fl screen = RecordsScreen
-  { stateRecords = changeRecordsState point fl
-  --, tryUser = ("", "")
-  , users = (users screen)
-  }
-
-changeRecordsState :: Point -> Bool -> RecordsScreenState
-changeRecordsState point True | isButtonMenu point exitHeight == True = ExitRecords
-                              | otherwise = NoRecordsState
-changeRecordsState point False | isButtonMenu point exitHeight == True = ExitRecordsBorder
-                               | otherwise = NoRecordsState
-
-
-handleSettingsScreen :: Event -> SettingsScreen -> SettingsScreen
-handleSettingsScreen (EventKey (MouseButton LeftButton) _ _ mouse) screen = changeSettingsScreen mouse True screen
-handleSettingsScreen (EventMotion mouse) screen = changeSettingsScreen mouse False screen
-handleSettingsScreen _ screen = screen
-
-changeSettingsScreen :: Point -> Bool -> SettingsScreen -> SettingsScreen
-changeSettingsScreen point fl screen = SettingsScreen
-  { stateSettings = changeSettingsState point fl
-  , gameType = changeGameType point fl screen --(gameType screen)
-  }
-
-changeGameType :: Point -> Bool -> SettingsScreen -> GameType
-changeGameType _ False screen = (gameType screen) 
-changeGameType point True screen | isButton point x0 yPlayers0 x1 yPlayers1 == True = PlayersGame
-                                 | isButton point x0 yAI0 x1 yAI1 == True = AIGame 
-                                 | otherwise = (gameType screen)
-   where
-      x0 = gameTypeVarX - 10
-      x1 = x0 + menuItemWidth
-      yPlayers0 = gameTypeSettingsHeight - 20
-      yPlayers1 = yPlayers0 + menuItemHeight
-      yAI0 = gameTypeSettingsHeight - menuItemHeight - 30
-      yAI1 = yAI0 + menuItemHeight
-
-changeSettingsState :: Point -> Bool -> SettingsScreenState
-changeSettingsState point True | isButtonMenu point exitHeight == True = ExitSettings
-                               | otherwise = NoSettingsState
-changeSettingsState point False | isButtonMenu point exitHeight == True = ExitSettingsBorder
-                                | isButton point x0 yPlayers0 x1 yPlayers1 == True = PlayersGameBorder
-                                | isButton point x0 yAI0 x1 yAI1 == True = AIGameBorder 
-                                | otherwise = NoSettingsState
-   where
-      x0 = gameTypeVarX - 10
-      x1 = x0 + menuItemWidth
-      yPlayers0 = gameTypeSettingsHeight - 20
-      yPlayers1 = yPlayers0 + menuItemHeight
-      yAI0 = gameTypeSettingsHeight - menuItemHeight - 30
-      yAI1 = yAI0 + menuItemHeight
-
-             -- Принадлежит ли точка заданной прямоугольной области
+-- | Принадлежит ли точка заданной прямоугольной области
 isButton :: Point -> Float -> Float -> Float -> Float -> Bool
-isButton (x, y) x0 y0 x1 y1 = (x >= x0) && 
-                         (x <= x1) &&
-                         (y >= y0) &&
-                         (y <= y1)
+isButton (x, y) x0 y0 x1 y1 = 
+  (x >= x0) && 
+  (x <= x1) &&
+  (y >= y0) &&
+  (y <= y1)
 
 
-             -- Принадлежит ли точка клавише меню, заданной вторым параметром - высотой кнопки
+-- | Принадлежит ли точка клавише меню, заданной вторым параметром - высотой кнопки
 isButtonMenu :: Point -> Float -> Bool
-isButtonMenu (x, y) height = (x >= -menuItemWidth / 2) && 
-                         (x <= menuItemWidth / 2) &&
-                         (y >= height) &&
-                         (y <= height + menuItemHeight)
+isButtonMenu (x, y) height = 
+  (x >= -menuItemWidth / 2) && 
+  (x <= menuItemWidth / 2) &&
+  (y >= height) &&
+  (y <= height + menuItemHeight)
 
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
@@ -930,6 +1084,7 @@ drawWhite = pictures
 handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
+--handleGame (EventKey (Char c) Down _ _ ) _ = readStr c screen
 -- handleGame (EventKey (SpecialKey KeySpace) _ _ _) = takePass
 handleGame _ = id
 
