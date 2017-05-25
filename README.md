@@ -1,12 +1,8 @@
 # project-template
 
-[![Build Status](https://travis-ci.org/cmc-haskell-2017/project-template.svg?branch=master)](https://travis-ci.org/cmc-haskell-2017/project-template)
+[![Build Status](https://travis-ci.org/cmc-haskell-2017/project-template.svg?branch=Peter)](https://travis-ci.org/cmc-haskell-2017/project-template)
 
-Практическое задние настольная игра "Го".
-
-## Сборка и запуск
-
-Соберите проект при помощи [утилиты Stack](https://www.haskellstack.org):
+Практическое задние настольная игра "Го". Вариант с индивидуальной частью (Базы Данных).
 
 ```
 stack setup
@@ -15,18 +11,11 @@ stack build
 
 Собрать и запустить проект можно при помощи команды
 
-```
 stack build && stack exec Game-Go
-```
 
-Запустить тесты можно при помощи команды
 
-```
-stack test
-```
+Для начала игры необходимв авторизация. Если вы запустили игру в первый раз, то необходимо набрать 2 "2 - for registration new user;" и зарегистрироваться. После этого вы сможете зайти под своим логином и паролем.
 
-Чтобы запустить интепретатор GHCi и автоматически подгрузить все модули проекта, используйте команду
+Чтобы авторизироваться нужно набрать 1 "1 - for authorization users;", после чего ввести свой логин и пароль.
 
-```
-stack ghci
-```
+Перед игрой можно посмотреть список рекордов других игроков (Упорядоченный по убыванию числа очков первого игрока), для этого необходимо ввести 3 "3 - print table of records".
