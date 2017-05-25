@@ -16,7 +16,9 @@ import           Database.SQLite.Simple.FromRow-}
 
 run :: IO ()
 run = do
-    putStrLn "Input \n1 - for authorization users;\n2 - for registration new user;\n3 - print table of records"
+    createTableRecord
+    createTableUser
+    putStrLn "Input \n1 - for authorization users;\n2 - for registration new user;\n3 - print table of records\n4 - for exit"
     manage <- getLine
     if (manage == "1")
     then do
@@ -29,8 +31,12 @@ run = do
         registrationUser
         run
       else do
-        printRecord
-        run
+        if (manage == "3")
+        then do
+          printRecord
+          run
+        else do
+          print "Bye."
   where
     display = InWindow "Game Go" (screenWidth, screenHeight) (200, 200)
     bgColor = makeColorI 245 245 220 255 -- цвет фона, бежевый

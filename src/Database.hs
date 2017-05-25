@@ -9,35 +9,38 @@ import           Control.Monad
 
 type NamePlayer = T.Text
 
+type ScoreOnePlayer = Float
+
+type Id_type = Int
+
+type Password = T.Text
+
 -- | Структура таблицы в базе данных для рекордов
-data Records = Records {id_record :: Int, name1 :: T.Text, name2 :: T.Text, score1 :: Float, score2 :: Float} deriving (Show)
+data Records = Records {id_record   :: Id_type,
+                        name1       :: NamePlayer,
+                        name2       :: NamePlayer,
+                        score1      :: ScoreOnePlayer,
+                        score2      :: ScoreOnePlayer} deriving (Show)
+
 -- | Структура строки-результата запроса SQL для списка рекордов
-data Record = Record {namePlayer1 :: T.Text, namePlayer2 :: T.Text, scorePlayer1 :: Float, scorePlayer2 :: Float} deriving (Show)
--- | Структура целочисленных числовых строк-результатов запроса SQL
-data IntValueRow = IntValueRow (Maybe Int) deriving (Show)
--- | Структура вещественных числовых строк-результатов запроса SQL
-data RealValueRow = RealValueRow (Maybe Float) deriving (Show)
--- | Структура символьного строки-результата запроса SQL
-data TextValueRow = TextValueRow (Maybe T.Text) deriving (Show)
+data Record = Record {namePlayer1   :: NamePlayer,
+                      namePlayer2   :: NamePlayer,
+                      scorePlayer1  :: ScoreOnePlayer,
+                      scorePlayer2  :: ScoreOnePlayer} deriving (Show)
+
 -- | Структура строки-результата запроса SQL для старых рекордов (нужны для сравнения)
-data ScoreValueRow = ScoreValueRow {oldScore1 :: Float, oldScore2 :: Float} deriving (Show)
+data ScoreValueRow = ScoreValueRow {oldScore1 :: ScoreOnePlayer,
+                                    oldScore2 :: ScoreOnePlayer} deriving (Show)
 -- | Структура таблицы в базе данных для пользователя
-data Users = Users {id_user :: Int, name :: T.Text, password :: T.Text} deriving (Show)
+data Users = Users {id_user   :: Id_type,
+                    name      :: NamePlayer,
+                    password  :: Password} deriving (Show)
 
 instance ToRow Records where
   toRow (Records id_record name1 name2 score1 score2) = toRow (id_record, name1, name2, score1, score2)
 
 instance ToRow Users where
   toRow (Users id_record name password) = toRow (id_record, name, password)
-
-instance FromRow IntValueRow where
-  fromRow = IntValueRow <$> field
-
-instance FromRow RealValueRow where
-  fromRow = RealValueRow <$> field
-
-instance FromRow TextValueRow where
-  fromRow = TextValueRow <$> field
 
 instance FromRow Record where
   fromRow = Record <$> field <*> field <*> field <*> field
@@ -90,27 +93,25 @@ createTableRecord = do
   close conn
 
 -- | Функция обновления таблицы рекордов
-updateTableRec :: (String, String, Float, Float) -> IO ()
+updateTableRec :: (String, String, ScoreOnePlayer, ScoreOnePlayer) -> IO ()
 updateTableRec (name1, name2, score1, score2)  = do
   printRecord
-  print name1
-  print score1
   conn <- open "game.db"
-  id_record <- queryNamed conn "SELECT id_record from records where name1 = :name1 AND name2 = :name2" [":name1" := (T.pack name1), ":name2" := (T.pack name2)] :: IO [IntValueRow]
-  id_record2 <- queryNamed conn "SELECT id_record from records where name1 = :name2 AND name2 = :name1" [":name1" := (T.pack name1), ":name2" := (T.pack name2)] :: IO [IntValueRow]
-  real_action_updateTableRec (getMaybeFromRow(id_record)) (getMaybeFromRow(id_record2)) (name1, name2, score1, score2)
+  id_record <- queryNamed conn "SELECT id_record from records where name1 = :name1 AND name2 = :name2" [":name1" := (T.pack name1), ":name2" := (T.pack name2)] :: IO [Only (Maybe Id_type)]
+  id_record2 <- queryNamed conn "SELECT id_record from records where name1 = :name2 AND name2 = :name1" [":name1" := (T.pack name1), ":name2" := (T.pack name2)] :: IO [Only (Maybe Id_type)]
+  real_action_updateTableRec (getMaybeFromRow id_record) (getMaybeFromRow id_record2) (name1, name2, score1, score2)
   close conn
 
 -- | Вспомогательная функция для обновления рекордов (добавляет новый рекорд,
 -- | если пользователи с такими именами еще не играли, если же играли, то
 -- | то обновление происходит только в случае если оба игрока набрали больше
 -- | очков, чем в прошлый раз)
-real_action_updateTableRec :: Maybe Int -> Maybe Int -> (String, String, Float, Float) -> IO ()
+real_action_updateTableRec :: Maybe Id_type -> Maybe Id_type -> (String, String, ScoreOnePlayer, ScoreOnePlayer) -> IO ()
 real_action_updateTableRec id_record id_record2 (name1, name2, score1, score2)
   | id_record == Nothing && id_record2 == Nothing= do -- | В таблице records нет записи рекорда для данных игроков
         conn <- open "game.db"
-        max <- query_ conn "SELECT MAX(id_record) from records" :: IO [IntValueRow]
-        execute conn "INSERT INTO records (id_record, name1, name2, score1, score2) VALUES (?, ?, ?, ?, ?)" (Records ((getIntNumber max) + 1) (T.pack name1) (T.pack name2) score1 score2)
+        max <- query_ conn "SELECT MAX(id_record) from records" :: IO [Only (Maybe Id_type)]
+        execute conn "INSERT INTO records (id_record, name1, name2, score1, score2) VALUES (?, ?, ?, ?, ?)" (Records ((getId_typeNumber max) + 1) (T.pack name1) (T.pack name2) score1 score2)
         close conn
   | id_record /= Nothing = do -- | В таблице records есть запись рекорда для данных игроков причем игроки в том же порядке
         conn <- open "game.db"
@@ -125,7 +126,7 @@ real_action_updateTableRec id_record id_record2 (name1, name2, score1, score2)
 
 -- | Еще одна вспомогательная функция для обновления таблицы рекордов
 -- | Она именно обновляет показатели рекордов для игроков (в случае, если они набрали больше очков)
-updateRecordIfNesessary :: [ScoreValueRow] -> Float -> Float -> Int -> IO()
+updateRecordIfNesessary :: [ScoreValueRow] -> Float -> Float -> Id_type -> IO()
 updateRecordIfNesessary old_score score1 score2 id_record
   | cmpScore old_score score1 score2 = do
       conn <- open "game.db"
@@ -149,12 +150,12 @@ printRecord = do
       printOne (oneRecord(list))
 
 -- | Данная функция делает список из кортежей вида [(имя_игрока_1, имя_игрока_2, количество_очков_игрока_1, количество_очков_игрока_2)]
-oneRecord :: [Record] -> [(T.Text,T.Text,Float,Float)]
+oneRecord :: [Record] -> [(T.Text,T.Text,ScoreOnePlayer,ScoreOnePlayer)]
 oneRecord ((Record n1 n2 s1 s2) : []) = [(n1,n2,s1,s2)]
 oneRecord ((Record n1 n2 s1 s2) : xs) = (n1,n2,s1,s2) : (oneRecord (xs))
 
 -- | Непосредственная печать списка рекордов в виде столбика из кортежей
-printOne :: [(T.Text,T.Text,Float,Float)] -> IO()
+printOne :: [(T.Text,T.Text,ScoreOnePlayer,ScoreOnePlayer)] -> IO()
 printOne ((n1, n2, s1, s2) : []) = print (n1, n2, s1, s2)
 printOne ((n1, n2, s1, s2) : xs) = do
   print (n1, n2, s1, s2)
@@ -164,35 +165,29 @@ printOne ((n1, n2, s1, s2) : xs) = do
 queryTableRec:: IO [Record]
 queryTableRec = do
   conn <- open "game.db"
-  list_name <- query_ conn "SELECT name1, name2, score1, score2 from records" :: IO [Record]
+  list_name <- query_ conn "SELECT name1, name2, score1, score2 from records ORDER BY score1 DESC" :: IO [Record]
   close conn
   return list_name
 
--- | Взяли [IntValueRow], вернули Maybe Int
-getMaybeFromRow:: [IntValueRow] -> Maybe Int
+-- | Взяли [Only (Maybe Id_type)], вернули Maybe Id_type
+getMaybeFromRow:: [Only (Maybe Id_type)] -> Maybe Id_type
 getMaybeFromRow [] = Nothing
-getMaybeFromRow ((IntValueRow value):xs) = value
+getMaybeFromRow ((Only value) : xs) = value
 
--- | Взяли [TextValueRow], вернули Maybe Text
-getMaybeFromRowText:: [TextValueRow] -> Maybe T.Text
+-- | Взяли [Only (Maybe T.Text)], вернули Maybe Text
+getMaybeFromRowText:: [Only (Maybe T.Text)] -> Maybe T.Text
 getMaybeFromRowText [] = Nothing
-getMaybeFromRowText ((TextValueRow value):xs) = value
+getMaybeFromRowText ((Only value):xs) = value
 
 -- | Берем Just из Maybe
 getJustFromMaybe :: Maybe a -> a
 getJustFromMaybe (Just value) = value
 
 -- | От результата запроса возвращаем целочисленную числовую величину (это для id), 0 - если запись первая
-getIntNumber :: [IntValueRow] -> Int
-getIntNumber [] = 0
-getIntNumber ((IntValueRow value):xs)|value == Nothing = 0
+getId_typeNumber :: [Only (Maybe Id_type)] -> Id_type
+getId_typeNumber [] = 0
+getId_typeNumber ((Only value):xs)|value == Nothing = 0
                                      |otherwise = (getJustFromMaybe value)
-
--- | От результата запроса возвращаем вещественную числовую величину или -1 (эта функция в первую очередь для score)
-getRealNumber :: [RealValueRow] -> Float
-getRealNumber [] = -1
-getRealNumber ((RealValueRow value):xs)|value == Nothing = -1
-                                      |otherwise = (getJustFromMaybe value)
 
 -- | Преобразует строку в вещественное число (нужно для добавления рекорда из интерфейса)
 charListToFloat :: String -> Float
@@ -221,11 +216,11 @@ createTableUser = do
 createUser :: (String, String) -> IO ()
 createUser (name, password) | (length (password) > 3) = do
   conn <- open "game.db"
-  old_name <- queryNamed conn "SELECT name from users WHERE name = :name" [":name" := name] :: IO [TextValueRow]
+  old_name <- queryNamed conn "SELECT name from users WHERE name = :name" [":name" := name] :: IO [Only (Maybe T.Text)]
   if ((getMaybeFromRowText (old_name)) == Nothing)
   then do
-    max <- query_ conn "SELECT MAX(id_record) from users" :: IO [IntValueRow]
-    execute conn "INSERT INTO users (id_record, name, password) VALUES (?, ?, ?)" (Users ((getIntNumber max) + 1) (T.pack name) (T.pack password))
+    max <- query_ conn "SELECT MAX(id_record) from users" :: IO [Only (Maybe Id_type)]
+    execute conn "INSERT INTO users (id_record, name, password) VALUES (?, ?, ?)" (Users ((getId_typeNumber max) + 1) (T.pack name) (T.pack password))
     close conn
   else do
     print "User with this name already exists. Please choose a different name."
@@ -247,7 +242,7 @@ authorizationUser = do
 authorizationTestUser :: (String, String) -> IO String
 authorizationTestUser (name, password) | (length (password) > 3) = do
   conn <- open "game.db"
-  password_table <- queryNamed conn "SELECT password from users WHERE name = :name" [":name" := name] :: IO [TextValueRow]
+  password_table <- queryNamed conn "SELECT password from users WHERE name = :name" [":name" := name] :: IO [Only (Maybe T.Text)]
   if ((getMaybeFromRowText (password_table)) /= Nothing)
   then do
     if ((T.pack password) == (getJustFromMaybe(getMaybeFromRowText (password_table))))
