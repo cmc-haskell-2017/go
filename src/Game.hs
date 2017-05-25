@@ -325,21 +325,23 @@ possibleMoves :: Stone -> Board -> [Move]
 possibleMoves _ _ = []
 
 -- | Построение дерева игры
-gameTree :: Board -> GameTree b Board
+gameTree :: Board -> GameTree Board
 gameTree a = Leaf a
 
 -- | Обрезание дерева игры
-cutTree :: Int -> GameTree b a -> GameTree b a
+-- cutTree :: Int -> GameTree b a -> GameTree b a
+cutTree :: Int -> GameTree a -> GameTree a
 cutTree _ (Leaf a) = Leaf a
--- cutTree n tree@(Node b trees)
---   | n == 0 = Leaf b
---   | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
+cutTree n tree@(Node b trees)
+  | n == 0 = Leaf b
+  | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
 
 -- | Оценка игрового поля
 estimate :: Board -> Estimate
 estimate _ = Estimate 0 0 0.0
 
 -- | Лучшие ходы
-bestMoves :: GameTree b Estimate -> GameTree b BestMove
+-- bestMoves :: GameTree b Estimate -> GameTree b BestMove
+bestMoves :: GameTree Estimate -> GameTree BestMove
 bestMoves (Leaf _) = (Leaf NoMove)
 -- bestMoves (Node ts) = Node $ map (\(m, t) -> (m, fmap (BestMove m) t) ) ts

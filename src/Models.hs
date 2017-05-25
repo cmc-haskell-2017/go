@@ -49,7 +49,8 @@ data BestMove
   | BestMove Move Estimate
 
 -- | Дерево игры
-data GameTree b a = Leaf a | Node b [(Move, GameTree b a)]
+-- data GameTree b a = Leaf a | Node b [(Move, GameTree b a)]
+data GameTree a = Leaf a | Node a [(Move, GameTree a)]
   deriving(Functor)
 
 -- GameTree a () -> GameTree () a
