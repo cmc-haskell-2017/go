@@ -107,10 +107,12 @@ changeBoard board game = game
 completeMove :: Game -> Game
 completeMove game = game
   { gamePlayer = switchPlayer (gamePlayer game)
-  , gameScore = amountScores (gameBoard game)
+  , gameScore = amountScores (gameBoard game) + float (scoreStones game)
   , listBoard = setBoard (gameBoard game) (listBoard game)
   , numberOfPass = (0, 0)
   }
+    where
+      float (x, y) = (fromIntegral y, fromIntegral x) -- обратный порядок потому что перепутан подсчет сьеденных камней
 
 -- | История состояний игрового поля.
 setBoard :: Board -> [Board] -> [Board]
@@ -290,7 +292,11 @@ switchPlayer White = Black
 -- самое сложное из всей базовой части это подсчитать очки
 -- над этим надо хорошенько подумать.
 amountScores :: Board -> Scores
-amountScores _ = (0.0, 0.0)
+amountScores board = (stoneScore board Black, stoneScore board White)
+
+stoneScore :: Board -> Stone -> Float
+stoneScore board stone = fromIntegral $ Map.size $ Map.filter (== (Cell stone)) board
+
 
 -- | Определить победителя на игровом поле. ничей не должно быть
 winner :: Game -> Maybe Stone
