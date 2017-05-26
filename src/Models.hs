@@ -81,6 +81,94 @@ data Game = Game
   , endGame :: Maybe Float
   }
 
+
+
+-- | Имя игрока
+type Name = String
+
+-- | Пароль
+type Password = String
+
+-- | Информация о игроке
+type User = (Name, Password)
+
+-- | Список игроков
+type Users = [User]
+
+-- | Тип игры - ИИ, 2 игрока
+data GameType = AIGame | PlayersGame
+  deriving(Eq, Show)
+
+data Screen =
+    ScreenLogin LoginScreen                -- Первый экран - ввод логина и пароля
+  | ScreenMainMenu MainMenuScreen          -- Главное меню
+  | ScreenGame Game                        -- Игра
+  | ScreenRegistration RegistrationScreen  -- Окно регистрации
+  | ScreenRecords RecordsScreen            -- Окно со списком рекордов
+  | ScreenSettings SettingsScreen          -- Окно настроек игры
+
+-- | Экран ввода логина и пароля
+data LoginScreen = LoginScreen
+  { loginFocusButton :: Maybe LoginButton  -- Клавиша, на которую наведен курсор
+  , loginState :: Maybe WriteState         -- Нажата ли кнопка ввода логина или пароля
+  , name :: Name                           -- Введенное имя
+  , password :: Password                   -- Введенный пароль
+  }
+
+-- | Клавиши на экране ввода логина и пароля
+data LoginButton = Login | Password | Registration | Enter
+  deriving(Eq, Show)
+
+-- | Состояния ввода
+data WriteState = LoginState | PasswordState
+  deriving(Eq, Show)
+
+-- | Экран главного меню
+data MainMenuScreen = MainMenuScreen
+  { menuFocusButton :: Maybe MenuButton  -- Клавиша, на которую наведен курсор
+  , gameType :: GameType                 -- Тип игры
+  }
+
+-- | Клавиши на экране главного меню
+data MenuButton = NewGame | Records | Settings
+  deriving(Eq, Show)
+
+-- | Экран регистрации
+data RegistrationScreen = RegistrationScreen
+  { registrationButton :: Maybe RegistrationButton  -- Клавиша, на которую наведен курсор
+  , registrationState :: Maybe WriteState           -- Нажата ли кнопка ввода логина и пароля
+  , newName :: Name                                 -- Регистрируемое имя
+  , newPassword :: Password                         -- Пароль для нового имени
+  }
+
+-- | Кнопки на экране регистрации
+data RegistrationButton =
+    EnterRegistration      -- Подтверждение нового имени и пароля
+  | ExitRegistration       -- Отмена регистрации - выход на экран ввода логина и пароля
+  | LoginRegistration      -- Ввод логина
+  | PasswordRegistration   -- Ввод пароля
+  deriving(Eq, Show)
+
+-- | Экран рекордов
+data RecordsScreen = RecordsScreen
+  { recordsButton :: Maybe RecordsButton  -- Клавиша, на которую наведен курсор
+  , recordsGameType :: GameType           -- Тип игры
+  }
+
+-- | Кнопка на экране рекордов
+data RecordsButton = ExitRecords
+  deriving(Eq, Show)
+
+-- | Экран настроек
+data SettingsScreen = SettingsScreen
+  { settingsButton :: Maybe SettingsButton   -- Клавиша, на которую наведен курсор
+  , settingsGameType :: GameType             -- Тип игры
+  }
+
+-- | Кнопки на экране настроек
+data SettingsButton = ExitSettings | AIGameType | PlayersGameType
+  deriving(Eq, Show)
+
 -- =========================================
 -- Инициализация игры
 -- =========================================
@@ -115,3 +203,12 @@ createListadd i1 i2
   |i2 < boardWidth = ((i1, i2), Empty) : createListadd i1 (i2 + 1)
   |i1 < boardHeight - 1 = createListadd (i1 + 1) 0
   |otherwise = []
+
+-- | Начальное состояние экрана - экран ввода логина и пароля
+initScreen :: Screen
+initScreen = ScreenLogin LoginScreen
+  { loginFocusButton = Nothing        -- Кнопка никакая еще не выделена
+  , loginState = Nothing              -- Не было входа в состояния ввода
+  , name = ""                         -- Имя еще не введено
+  , password = ""                     -- Пароль еще не введен
+  }
