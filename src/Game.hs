@@ -947,6 +947,13 @@ data Cell = Cell Stone | CellShadow Stone | Empty
 -- | Количество очков для одного игрока.
 type Score = Float
 
+-- | Обработка пассов
+takePass :: Game -> Game
+takePass game
+  | np == (1,1) = checkGroups game
+  | np == (2,2) = gameOver game
+  | otherwise = game {gamePlayer = switchPlayer (gamePlayer game)}
+  where np = (numberOfPass game)
 -- | Количество очков двух игроков.
 type Scores = (Score, Score)
 
@@ -955,6 +962,11 @@ type Node = (Int, Int)
 
 -- | Игровое поле.
 type Board = Map Node Cell
+gameOver :: Game -> Game
+gameOver game = game
+  { gameWinner = winner game
+  , endGame = Just 0.005
+  }
 
 -- | Кол-во камней, которые "съели" черные.
 type Blacksum = Int
@@ -1129,10 +1141,12 @@ changeBoard board game = game
 completeMove :: Game -> Game
 completeMove game = game
   { gamePlayer = switchPlayer (gamePlayer game)
-  , gameScore = amountScores (gameBoard game)
-  , gameWinner = winner game
-
+  , gameScore = amountScores (gameBoard game) + float (scoreStones game)
+  , listBoard = setBoard (gameBoard game) (listBoard game)
+  , numberOfPass = (0, 0)
   }
+    where
+      float (x, y) = (fromIntegral y, fromIntegral x) -- обратный порядок потому что перепутан подсчет сьеденных камней
 
 -- | История состояний игрового поля.
 setBoard :: Board -> [Board] -> [Board]
@@ -1330,11 +1344,20 @@ switchPlayer White = Black
 -- самое сложное из всей базовой части это подсчитать очки
 -- над этим надо хорошенько подумать.
 amountScores :: Board -> Scores
-amountScores _ = (0.0, 0.0)
+amountScores board = (stoneScore board Black, stoneScore board White)
 
--- | Определить победителя на игровом поле.
+stoneScore :: Board -> Stone -> Float
+stoneScore board stone = fromIntegral $ Map.size $ Map.filter (== (Cell stone)) board
+
+
+-- | Определить победителя на игровом поле. ничей не должно быть
 winner :: Game -> Maybe Stone
-winner _ = Nothing
+winner game
+  | (scoreblack game) < (scorewhite game) = Just White
+  | otherwise = Just Black
+    where
+      scoreblack game = fst (gameScore game) + fromIntegral( fst ( scoreStones game))
+      scorewhite game = (gameComi game) + snd (gameScore game) + fromIntegral( snd ( scoreStones game))
 
 -- | Обновление игры.
 -- В этой игре все изменения происходят только по действиям игрока,
@@ -1346,15 +1369,29 @@ updateGame _ = id
 -- Константы, параметры игры.
 -- =========================================
 
+-- | Главная функция
+ai :: Stone -> Board -> Maybe Move
+ai _ _ = Nothing
+-- ai stone board = fromBestMove . fold . bestMoves . fmap estimate . cutTree n . gameTree
+-- более умная свертка fold
 -- | Радиус картинки камня.
 radiusStone :: Float
 radiusStone = 0.45
 
+-- minimax :: GameTree (m, e) -> m
+-- minimax
+
+-- | Возможные ходы
+possibleMoves :: Stone -> Board -> [Move]
+possibleMoves _ _ = []
 -- | Начальная фора(очки) белого игрока
 -- может варьироваться уже по желания, но это позже в индивидуальных частях.
 playerComi :: Float
 playerComi = 6.5
 
+-- | Построение дерева игры
+gameTree :: Board -> GameTree Board
+gameTree a = Leaf a
 -- | начальная фора(камни) черного игрока, надо подумать как это реализовать
 -- обозначает, сколько камней должен поставит черный игрок перед началом партии
 -- это нужно если очковой форы не хватает и игроки слишком разного уровня
@@ -1366,13 +1403,29 @@ playerHandicap = 0
 boardWidth :: Int
 boardWidth  = 9
 
+-- | Обрезание дерева игры
+-- cutTree :: Int -> GameTree b a -> GameTree b a
+cutTree :: Int -> GameTree a -> GameTree a
+cutTree _ (Leaf a) = Leaf a
+cutTree n tree@(Node b trees)
+  | n == 0 = Leaf b
+  | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
 -- | Высота игрового поля в клетках.
 boardHeight :: Int
 boardHeight = 9
 
+-- | Оценка игрового поля
+estimate :: Board -> Estimate
+estimate _ = Estimate 0 0 0.0
 -- | Размер одной клетки в пикселях.
 cellSize :: Int
 cellSize = 50
+
+-- | Лучшие ходы
+-- bestMoves :: GameTree b Estimate -> GameTree b BestMove
+bestMoves :: GameTree Estimate -> GameTree BestMove
+bestMoves (Leaf _) = (Leaf NoMove)
+-- bestMoves (Node ts) = Node $ map (\(m, t) -> (m, fmap (BestMove m) t) ) ts
 
 -- | Отступы от края экрана.
 screenOffset :: Int

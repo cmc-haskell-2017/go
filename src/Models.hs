@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Models where
 
 import qualified Data.Map as Map
@@ -40,7 +41,7 @@ type AmountStones = (Blacksum, Whitesum)
 type Passes = (Int, Int)
 
 -- | Ход игрока
-type Move = (Node, Stone)
+type Move = Node
 
 -- | Лучший ход
 data BestMove
@@ -48,14 +49,17 @@ data BestMove
   | BestMove Move Estimate
 
 -- | Дерево игры
-data GameTree a = Leaf a | Node [(Move, GameTree a)]
+-- data GameTree b a = Leaf a | Node b [(Move, GameTree b a)]
+data GameTree a = Leaf a | Node a [(Move, GameTree a)]
   deriving(Functor)
 
--- | Оценка поля
-data Estimate = Estimate Int
-  deriving (Ord)
+-- GameTree a () -> GameTree () a
 
--- | Монод для лучшего хода
+-- | Оценка поля
+data Estimate = Estimate Score Int Float
+  deriving (Eq, Ord)
+
+-- | Моноид для лучшего хода
 instance Monoid BestMove where
   mempty = NoMove
   mappend (BestMove m1 e1) (BestMove m2 e2)
@@ -68,12 +72,13 @@ instance Monoid BestMove where
 data Game = Game
   { gamePlayer :: Stone -- чей ход
   , gameScore :: Scores -- количества очков для первого и второго игрока
-  , gameComi :: Float -- колличество форы
-  , gameWinner :: Maybe Stone -- победитель?!
+  , gameComi :: Float -- колличество форы для белых камней
+  , gameWinner :: Maybe Stone -- победитель
   , gameBoard :: Board
   , listBoard :: [Board] -- список всех предыдущих состояний
   , scoreStones :: AmountStones -- кол-во камней убранных каждым игроком
   , numberOfPass :: Passes
+  , endGame :: Maybe Float
   }
 
 -- =========================================
@@ -93,6 +98,7 @@ initGame = Game
   , listBoard = []
   , scoreStones = (0, 0)
   , numberOfPass = (0, 0)
+  , endGame = Nothing
   }
 
 -- | Построение пустого поля.
