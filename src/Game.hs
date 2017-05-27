@@ -203,10 +203,10 @@ updateScreen _ = id
 
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
-handleGame (EventKey (MouseButton LeftButton) _ _ mouse) = placeStone (mouseToCell mouse)
+handleGame (EventKey (MouseButton LeftButton) Up _ mouse) = placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
 --handleGame (EventKey (Char c) Down _ _ ) _ = readStr c screen
-handleGame (EventKey (SpecialKey KeySpace) _ _ _) = takePass
+handleGame (EventKey (SpecialKey KeySpace) Up _ _) = takePass . setPass
 handleGame _ = id
 
 -- | Добавление пасса
@@ -261,8 +261,8 @@ placeStone (Just point) game =
       Just _ -> game    -- если есть победитель, то поставить фишку нельзя
       Nothing -> case modifyAt point (gameBoard game) (gamePlayer game) (listBoard game) of --здесь еще нужно дописать функцию преобразования
         Nothing -> game -- если поставить фишку нельзя, ничего не изменится
-        -- Just newBoard -> completeMove (removeStones (changeBoard newBoard game))
-        Just newBoard -> completeMove (ruleKo (removeStones (changeBoard newBoard game)))
+        Just newBoard -> completeMove (removeStones (changeBoard newBoard game))
+        -- Just newBoard -> completeMove (ruleKo (removeStones (changeBoard newBoard game)))
 
 -- | Применяем изменения, которые произошли на доске.
 changeBoard :: Board -> Game -> Game
@@ -296,60 +296,62 @@ modifyAt point board stone boards
   | otherwise = Nothing
 
 -- | Проверка на правила игры, false если не по правилам.
--- isPossible :: Node -> Board -> Stone -> [Board] -> Bool
--- isPossible point board stone listboard
---   | ruleBusy point board = False
---   | (not (ruleKo point stone board listboard)) = False
---   | (not (ruleFreedom point board stone)) = False
---   | otherwise = True
-
--- | Проверка на правила игры, false если не по правилам.
 isPossible :: Node -> Board -> Stone -> [Board] -> Bool
-isPossible point board stone _
+isPossible point board stone listboard
   | ruleBusy point board = False
-  -- | (not (ruleKo point stone board listboard)) = False
+  | (not (ruleKo point stone board listboard)) = False
   | (not (ruleFreedom point board stone)) = False
   | otherwise = True
 
-ruleKo :: Game -> Game
-ruleKo game
-  | func game = game
-    { gameBoard = head (listBoard game)
-    , listBoard = tail (listBoard game)
-    , gamePlayer = switchPlayer (gamePlayer game)
-    -- , scoreStones надо будет отменять изменения обратно
-    }
-  | otherwise = game
-    where
-      func onegame = (listBoard onegame) /= [] &&
-        tail (listBoard onegame) /= [] &&
-       (gameBoard onegame) == head (tail (listBoard onegame)) ||
-       ammEqBoards (gameBoard onegame) (listBoard onegame) > 1
+-- | Проверка на правила игры, false если не по правилам.
+-- isPossible :: Node -> Board -> Stone -> [Board] -> Bool
+-- isPossible point board stone _
+--   | ruleBusy point board = False
+--   -- | (not (ruleKo point stone board listboard)) = False
+--   | (not (ruleFreedom point board stone)) = False
+--   | otherwise = True
+
+-- ruleKo :: Game -> Game
+-- ruleKo game
+--   | func game = game
+--     { gameBoard = head (listBoard game)
+--     , listBoard = tail (listBoard game)
+--     , gamePlayer = switchPlayer (gamePlayer game)
+--     -- , scoreStones надо будет отменять изменения обратно
+--     }
+--   | otherwise = game
+--     where
+--       func onegame = (listBoard onegame) /= [] &&
+--         tail (listBoard onegame) /= [] &&
+--        (gameBoard onegame) == head (tail (listBoard onegame)) ||
+--        ammEqBoards (gameBoard onegame) (listBoard onegame) > 1
 
 -- | Правило Ко борьбы, true если все по правилам.
 -- Конкретно данное состояние встретилось менее трех раз и оно не совпало с предыдущим => все норм
--- ruleKo :: Node -> Stone -> Board -> [Board] -> Bool
--- ruleKo _ _ _ [] = True
--- ruleKo point stone board (x:xs)
--- --  = amountEqBoards board (x:xs) < 1
--- --  && boardTry (place point stone board) (x:xs) /= x
---   = boardTry stone (place point stone board) (x:xs) /= x
+ruleKo :: Node -> Stone -> Board -> [Board] -> Bool
+ruleKo _ _ _ [] = True
+ruleKo _ _ _ [x] = True
+ruleKo point stone board (x:y:xs)
+--  = amountEqBoards board (x:xs) < 1
+--  && boardTry (place point stone board) (x:xs) /= x
+  = boardTry stone (place point stone board) (x:y:xs) /= y
 --
--- -- | Создание доски для проверки на равенство
--- boardTry :: Stone -> Board -> [Board] -> Board
--- boardTry stone board boards = (gameBoard (removeStones (fakeGame stone board boards)))
+-- | Создание доски для проверки на равенство
+boardTry :: Stone -> Board -> [Board] -> Board
+boardTry stone board boards = (gameBoard (removeStones (fakeGame stone board boards)))
+
 --
--- -- | Game для удаления камня
--- fakeGame :: Stone -> Board -> [Board] -> Game
--- fakeGame stone board boards = Game
---   { gamePlayer = stone
---   , gameScore = (0, 0)
---   , gameComi = playerComi
---   , gameWinner = Nothing
---   , gameBoard  = board
---   , listBoard = boards
---   , scoreStones = (0, 0)
---   }
+-- | Game для удаления камня
+fakeGame :: Stone -> Board -> [Board] -> Game
+fakeGame stone board boards = Game
+  { gamePlayer = stone
+  , gameScore = (0, 0)
+  , gameComi = playerComi
+  , gameWinner = Nothing
+  , gameBoard  = board
+  , listBoard = boards
+  , scoreStones = (0, 0)
+  }
 
 -- | Сколько раз встречалась такая доска раньше.
 -- amountEqBoards :: Board -> [Board] -> Int
