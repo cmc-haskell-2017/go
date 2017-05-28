@@ -203,9 +203,8 @@ updateScreen _ = id
 
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
-handleGame (EventKey (MouseButton LeftButton) Up _ mouse) = placeStone (mouseToCell mouse)
+handleGame (EventKey (MouseButton LeftButton) Up _ mouse)  = moveAI . placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
---handleGame (EventKey (Char c) Down _ _ ) _ = readStr c screen
 handleGame (EventKey (SpecialKey KeySpace) Up _ _) = takePass . setPass
 handleGame _ = id
 
@@ -278,6 +277,7 @@ completeMove game = game
   , gameScore = amountScores (gameBoard game) + float (scoreStones game)
   , listBoard = setBoard (gameBoard game) (listBoard game)
   , numberOfPass = (0, 0)
+  , movePlayer = True
   }
     where
       float (x, y) = (fromIntegral y, fromIntegral x) -- обратный порядок потому что перепутан подсчет сьеденных камней
@@ -536,9 +536,31 @@ updateGame _ = id
 -- Искуственный инелект игры
 -- =========================================
 
+-- ход, который делает ИИ, если игрок сделал свой ход
+moveAI :: Game -> Game
+moveAI game =
+  case (movePlayer game) of
+    False -> game
+    True -> case ai (typeAI game) (gameBoard game) (sizecutTree game) of
+      Nothing -> game {gamePlayer = switchPlayer (gamePlayer game), numberOfPass = setAIpass game, movePlayer = False}
+      (Just move) -> complateAImove game move
+      where
+        setAIpass game
+          | typeAI game == White = setpass (numberOfPass game) White
+          | otherwise = setpass (numberOfPass game) Black
+        setpass (b, w) White = (b, w + 1)
+        setpass (b, w) Black = (b + 1, w)
+
+-- | закончить ход за ИИ
+complateAImove :: Game -> Move -> Game
+complateAImove game _ = game
+
 -- | Главная функция
-ai :: AIColor -> Board -> Maybe Move
-ai _ _ = Nothing
+ai :: AIColor -> Board -> Int -> Maybe Move
+ai stone board n =
+  case maxmin stone (cutTree n $ gameTree stone board) Nothing of
+    NoMove -> Nothing
+    BestMove move _ -> (Just move)
 -- ai stone board = fromBestMove . fold . bestMoves . fmap estimate . cutTree n . gameTree
 -- ai stone board =  (minmax stone  cutTree 3 . gameTree
 -- более умная свертка fold
@@ -553,10 +575,15 @@ ai _ _ = Nothing
 --     bestmove <- fmap f
 --     return bestmove
 
-maxmin :: Stone -> GameTree Board -> BestMove
-maxmin stone gametree
-  | isTerminal gametree = (heuristic gametree stone)
-  | otherwise = fold $ fmap (\(m, t) -> maxmin (switchPlayer stone) t) (child gametree)
+maxmin :: Stone -> GameTree Board -> Maybe Move -> BestMove
+maxmin _ (Leaf _) Nothing = NoMove
+maxmin stone gametree move
+  | isTerminal gametree = BestMove (getmove move) (heuristic gametree stone)
+  | otherwise = fold $ map (\(m, t) -> maxmin (switchPlayer stone) t (Just m)) (child gametree) -- допилить
+-- сейчас это не будет работать, потому что на выходе- ход на последней глубине, а должен быть на первом шаге
+  where
+    getmove (Just m) = m
+    getmove Nothing = (0, 0) -- допилить
 
 -- max :: Stone -> GameTree Board -> BestMove
 -- max alpha beta stone gametree
@@ -566,13 +593,13 @@ maxmin stone gametree
 --
 --
 -- min :: Stone -> GameTree Board -> BestMove
-
-
 -- f - s = -AlphaBeta(child, -score, -alpha, deph+1, -player)
 -- делаем из GameTree board GameTree Estimate
 -- filter -> fold
 -- if s < score  then score  = s
 -- if score <= alpha then return score
+-- альфа-бета пока не получается
+
 
 child :: GameTree a -> [(Move, GameTree a)]
 child (Leaf _) = []
@@ -599,8 +626,8 @@ cutTree n (Node b trees)
   | n == 0 = Leaf b
   | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
 
-heuristic :: GameTree Board -> Stone -> BestMove
-heuristic gametree stone = BestMove (0, 0) $ Estimate 0 0 0.0
+heuristic :: GameTree Board -> Stone -> Estimate
+heuristic _ _ = Estimate 0 0 0.0
 
 -- minus :: BestMove -> BestMove
 -- minus = id

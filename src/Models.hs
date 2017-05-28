@@ -84,9 +84,9 @@ data Game = Game
   , numberOfPass :: Passes
   , endGame :: Maybe Float
   , typeAI :: AIColor
+  , movePlayer :: Bool
+  , sizecutTree :: Int
   }
-
-
 
 -- | Имя игрока
 type Name = String
@@ -193,6 +193,8 @@ initGame = Game
   , numberOfPass = (0, 0)
   , endGame = Nothing
   , typeAI = defaultAIColor
+  , movePlayer = False
+  , sizecutTree = defaultsizecut
   }
 
 -- | Построение пустого поля.
@@ -222,3 +224,7 @@ initScreen = ScreenLogin LoginScreen
 -- | ИИ по умолчанию белые
 defaultAIColor :: AIColor
 defaultAIColor = White
+
+-- | размер обрезки дерева
+defaultsizecut :: Int
+defaultsizecut = 3
