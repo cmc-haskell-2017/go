@@ -46,6 +46,7 @@ screenWidth  = cellSize * boardWidth + screenOffset
 screenHeight :: Int
 screenHeight = cellSize * boardHeight + screenOffset
 
+
 ----------------------   D R A W     S C R E E N S   ------------------------------
 -- | Ширина пункта меню
 menuItemWidth :: Float

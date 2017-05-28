@@ -1,6 +1,6 @@
 module Game  where
 import Data.Monoid()
-import Data.Foldable()
+import Data.Foldable(fold)
 import Draw
 import Models
 import Config
@@ -537,22 +537,59 @@ updateGame _ = id
 -- =========================================
 
 -- | Главная функция
-ai :: Stone -> Board -> Maybe Move
+ai :: AIColor -> Board -> Maybe Move
 ai _ _ = Nothing
 -- ai stone board = fromBestMove . fold . bestMoves . fmap estimate . cutTree n . gameTree
+-- ai stone board =  (minmax stone  cutTree 3 . gameTree
 -- более умная свертка fold
 
--- minimax :: GameTree (m, e) -> m
--- minimax
+-- alpha -> beta -> color -> Board
+-- alphabeta :: Estimate -> Estimate -> Stone -> GameTree (m, e) -> m
+-- alphabeta :: Estimate -> Estimate -> Stone -> GameTree Board -> BestMove
+-- alphabeta alpha beta stone gametree
+--   | isTerminal gametree = minus (heuristic gametree stone)
+--   | otherwise = do
+--     bestmove <- (BestMove (0, 0) beta)
+--     bestmove <- fmap f
+--     return bestmove
+
+maxmin :: Stone -> GameTree Board -> BestMove
+maxmin stone gametree
+  | isTerminal gametree = (heuristic gametree stone)
+  | otherwise = fold $ fmap (\(m, t) -> maxmin (switchPlayer stone) t) (child gametree)
+
+-- max :: Stone -> GameTree Board -> BestMove
+-- max alpha beta stone gametree
+--   | isTerminal gametree = minus (heuristic gametree stone)
+--   | otherwise =
+--     fold . fmap (min (switchPlayer stone))
+--
+--
+-- min :: Stone -> GameTree Board -> BestMove
+
+
+-- f - s = -AlphaBeta(child, -score, -alpha, deph+1, -player)
+-- делаем из GameTree board GameTree Estimate
+-- filter -> fold
+-- if s < score  then score  = s
+-- if score <= alpha then return score
+
+child :: GameTree a -> [(Move, GameTree a)]
+child (Leaf _) = []
+child (Node a trees) = trees
 
 -- | Возможные ходы
 possibleMoves :: Stone -> Board -> [Move]
 possibleMoves _ _ = []
 
 
+isTerminal :: GameTree a -> Bool
+isTerminal  (Leaf _) = True
+isTerminal _ = False
+
 -- | Построение дерева игры
-gameTree :: Board -> GameTree Board
-gameTree a = Leaf a
+gameTree :: Stone -> Board -> GameTree Board
+gameTree _ a = Leaf a
 
 -- | Обрезание дерева игры
 -- cutTree :: Int -> GameTree b a -> GameTree b a
@@ -562,12 +599,25 @@ cutTree n (Node b trees)
   | n == 0 = Leaf b
   | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
 
+heuristic :: GameTree Board -> Stone -> BestMove
+heuristic gametree stone = BestMove (0, 0) $ Estimate 0 0 0.0
+
+-- minus :: BestMove -> BestMove
+-- minus = id
+
 -- | Оценка игрового поля
-estimate :: Board -> Estimate
-estimate _ = Estimate 0 0 0.0
+-- estimate :: GameTree Board-> Stone -> Estimate
+-- estimate _ _ = Estimate 0 0 0.0
 
 -- | Лучшие ходы
 -- bestMoves :: GameTree b Estimate -> GameTree b BestMove
-bestMoves :: GameTree Estimate -> GameTree BestMove
-bestMoves (Leaf _) = (Leaf NoMove)
+-- bestMoves :: GameTree Estimate -> GameTree BestMove
+-- bestMoves (Leaf _) = (Leaf NoMove)
 -- bestMoves (Node ts) = Node $ map (\(m, t) -> (m, fmap (BestMove m) t) ) ts
+
+--
+min_value :: Estimate
+min_value = Estimate 0 0 0.0
+
+max_value :: Estimate
+max_value = Estimate 0 0 0.0

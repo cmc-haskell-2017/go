@@ -43,6 +43,9 @@ type Passes = (Int, Int)
 -- | Ход игрока
 type Move = Node
 
+-- | Цвет, которым играет ИИ
+type AIColor = Stone
+
 -- | Лучший ход
 data BestMove
   = NoMove
@@ -59,11 +62,12 @@ data GameTree a = Leaf a | Node a [(Move, GameTree a)]
 data Estimate = Estimate Score Int Float
   deriving (Eq, Ord)
 
+
 -- | Моноид для лучшего хода
 instance Monoid BestMove where
   mempty = NoMove
   mappend (BestMove m1 e1) (BestMove m2 e2)
-    | e1 >= e2  = BestMove m1 e1
+    | e1 > e2  = BestMove m1 e1
     | otherwise = BestMove m2 e2
   mappend NoMove bm = bm
   mappend bm NoMove = bm
@@ -79,6 +83,7 @@ data Game = Game
   , scoreStones :: AmountStones -- кол-во камней убранных каждым игроком
   , numberOfPass :: Passes
   , endGame :: Maybe Float
+  , typeAI :: AIColor
   }
 
 
@@ -187,6 +192,7 @@ initGame = Game
   , scoreStones = (0, 0)
   , numberOfPass = (0, 0)
   , endGame = Nothing
+  , typeAI = defaultAIColor
   }
 
 -- | Построение пустого поля.
@@ -212,3 +218,7 @@ initScreen = ScreenLogin LoginScreen
   , name = ""                         -- Имя еще не введено
   , password = ""                     -- Пароль еще не введен
   }
+
+-- | ИИ по умолчанию белые
+defaultAIColor :: AIColor
+defaultAIColor = White
