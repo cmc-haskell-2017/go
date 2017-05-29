@@ -4,7 +4,7 @@ import Control.Concurrent (forkIO)
 import Network.Wai.Handler.Warp (run)
 import System.Environment
 
-import go.Server
+import Go.Server
 
 main :: IO ()
 main = do
