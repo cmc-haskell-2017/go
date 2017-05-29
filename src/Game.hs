@@ -5,6 +5,7 @@ import Draw
 import Models
 import Config
 
+
 import Graphics.Gloss.Interface.Pure.Game
 import qualified Data.Map as Map
 
@@ -28,7 +29,7 @@ handleLoginScreen _ screen = screen
 
 -- | Обработка события на экране главного меню
 handleMainMenuScreen :: Event -> Screen -> Screen
-handleMainMenuScreen (EventKey (MouseButton LeftButton) _ _ _) screen
+handleMainMenuScreen (EventKey (MouseButton LeftButton) Up _ _) screen
   = changeMainMenuScreen screen
 handleMainMenuScreen (EventMotion mouse) screen = checkScreen mouse screen
 handleMainMenuScreen _ screen = screen
@@ -203,7 +204,7 @@ updateScreen _ = id
 
 -- | Обработка событий.
 handleGame :: Event -> Game -> Game
-handleGame (EventKey (MouseButton LeftButton) Up _ mouse)  = moveAI . placeStone (mouseToCell mouse)
+handleGame (EventKey (MouseButton LeftButton) Up _ mouse) = moveAI . placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
 handleGame (EventKey (SpecialKey KeySpace) Up _ _) = takePass . setPass
 handleGame _ = id
@@ -211,8 +212,8 @@ handleGame _ = id
 -- | Добавление пасса
 setPass :: Game -> Game
 setPass game
-  | (gamePlayer game) == Black = game {numberOfPass = (\(x , y) -> (x+1 , y)) (numberOfPass game)}
-  | otherwise = game { numberOfPass = (\(x , y) -> (x , y+1)) (numberOfPass game)}
+  | (gamePlayer game) == Black = game {numberOfPass = (\(x , y) -> (x + 1 , y)) (numberOfPass game)}
+  | otherwise = game { numberOfPass = (\(x , y) -> (x , y + 1)) (numberOfPass game)}
 
 -- | Обработка пассов
 takePass :: Game -> Game
@@ -340,7 +341,6 @@ ruleKo point stone board (x:y:xs)
 boardTry :: Stone -> Board -> [Board] -> Board
 boardTry stone board boards = (gameBoard (removeStones (fakeGame stone board boards)))
 
---
 -- | Game для удаления камня
 fakeGame :: Stone -> Board -> [Board] -> Game
 fakeGame stone board boards = Game
@@ -354,8 +354,6 @@ fakeGame stone board boards = Game
   }
 
 -- | Сколько раз встречалась такая доска раньше.
--- amountEqBoards :: Board -> [Board] -> Int
--- amountEqBoards board = length . filter (== board)
 ammEqBoards :: Board -> [Board] -> Int
 ammEqBoards board = length . filter (== board)
 
@@ -491,7 +489,7 @@ isFreedom (x, y) (Cell stone) board
 --removeDead :: Game -> Game
 
 -- | Поставить камень.
-place :: Node -> Stone -> Board -> Board
+place :: Move -> Stone -> Board -> Board
 place p stone = Map.insert p (Cell stone)
 
 -- | Сменить игрока.
@@ -532,6 +530,7 @@ winner game
 updateGame :: Float -> Game -> Game
 updateGame _ = id
 
+
 -- =========================================
 -- Искуственный инелект игры
 -- =========================================
@@ -541,9 +540,9 @@ moveAI :: Game -> Game
 moveAI game =
   case (movePlayer game) of
     False -> game
-    True -> case ai (typeAI game) (gameBoard game) (sizecutTree game) of
+    True -> case ai (typeAI game) (gameBoard game) (sizecutTree game) (listBoard game)  of
       Nothing -> game {gamePlayer = switchPlayer (gamePlayer game), numberOfPass = setAIpass game, movePlayer = False}
-      (Just move) -> complateAImove game move
+      (Just move) -> complateAImove move (typeAI game) game
       where
         setAIpass game
           | typeAI game == White = setpass (numberOfPass game) White
@@ -552,15 +551,18 @@ moveAI game =
         setpass (b, w) Black = (b + 1, w)
 
 -- | закончить ход за ИИ
-complateAImove :: Game -> Move -> Game
-complateAImove game _ = game
+complateAImove :: Move -> Stone -> Game -> Game
+complateAImove move stone game = aicomplate $ completeMove (removeStones (changeBoard (place move stone (gameBoard game)) game))
+  where
+    aicomplate g = g {movePlayer = False}
 
 -- | Главная функция
-ai :: AIColor -> Board -> Int -> Maybe Move
-ai stone board n =
-  case maxmin stone (cutTree n $ gameTree stone board) Nothing of
+ai :: AIColor -> Board -> Int -> [Board] -> Maybe Move
+ai stone board n boards =
+  case maxmin stone (cutTree n $ gameTree stone board boards) Nothing of
     NoMove -> Nothing
     BestMove move _ -> (Just move)
+
 -- ai stone board = fromBestMove . fold . bestMoves . fmap estimate . cutTree n . gameTree
 -- ai stone board =  (minmax stone  cutTree 3 . gameTree
 -- более умная свертка fold
@@ -575,15 +577,17 @@ ai stone board n =
 --     bestmove <- fmap f
 --     return bestmove
 
+-- | Алгоритм минимакса
 maxmin :: Stone -> GameTree Board -> Maybe Move -> BestMove
 maxmin _ (Leaf _) Nothing = NoMove
 maxmin stone gametree move
   | isTerminal gametree = BestMove (getmove move) (heuristic gametree stone)
-  | otherwise = fold $ map (\(m, t) -> maxmin (switchPlayer stone) t (Just m)) (child gametree) -- допилить
--- сейчас это не будет работать, потому что на выходе- ход на последней глубине, а должен быть на первом шаге
+  | otherwise = fold $ map (\(m, t) -> makeBestMove m $ maxmin (switchPlayer stone) t (Just m)) (childs gametree)
   where
     getmove (Just m) = m
-    getmove Nothing = (0, 0) -- допилить
+    getmove Nothing = (0, 0) -- допилить/ можно поставить сюда все, что угодно. Сюда никогда не зайдет, а можно ли тогда убрать это?
+    makeBestMove m NoMove = NoMove -- -||- никогда сюда не зайдет
+    makeBestMove pastMove (BestMove _ e) = BestMove pastMove e
 
 -- max :: Stone -> GameTree Board -> BestMove
 -- max alpha beta stone gametree
@@ -601,33 +605,68 @@ maxmin stone gametree move
 -- альфа-бета пока не получается
 
 
-child :: GameTree a -> [(Move, GameTree a)]
-child (Leaf _) = []
-child (Node a trees) = trees
+childs :: GameTree a -> [(Move, GameTree a)]
+childs (Leaf _) = []
+childs (Node a trees) = trees
 
 -- | Возможные ходы
-possibleMoves :: Stone -> Board -> [Move]
-possibleMoves _ _ = []
+possibleMoves :: Stone -> Board -> [Board] -> [Move]
+possibleMoves stone board boards =
+  map (\(k, a) -> k) $ cutBoard board $ Map.filterWithKey (\k _ -> isPossible k board stone boards) board
+
+-- | Уменьшение доски, чтобы рассматривать меньше вариантов
+cutBoard :: Board -> Board -> [(Node, Cell)]
+cutBoard board1 board2 =
+   regionStone board2 $ Map.toList $ Map.filter ( /= Empty) board1
+
+--
+regionStone :: Board -> [(Node, Cell)]-> [(Node, Cell)]
+regionStone _ [] = []
+regionStone fullBoard (x : xs) = (regionStoneWithRadius fullBoard x radiuscut) ++ regionStone fullBoard xs
+
+--
+regionStoneWithRadius :: Board -> (Node, Cell) -> Int -> [(Node, Cell)]
+regionStoneWithRadius board ((x, y), cell) n =
+  (addCell (x + n, y) $ Map.lookup (x + n, y) board) ++
+  (addCell (x + n, y - n) $ Map.lookup (x + n, y - n) board) ++
+  (addCell (x, y - n) $ Map.lookup (x, y - n) board) ++
+  (addCell (x - n, y - n) $ Map.lookup (x - n, y - n) board) ++
+  (addCell (x - n, y) $ Map.lookup (x - n, y) board) ++
+  (addCell (x - n, y + n) $ Map.lookup (x - n, y + n) board) ++
+  (addCell (x, y + n) $ Map.lookup (x, y + n) board) ++
+  (addCell (x + n, y + n) $ Map.lookup (x + n, y + n) board)
+  where
+    addCell _ Nothing = []
+    addCell node (Just a) = [(node, a)]
 
 
+
+-- | Проверка на конечное состояние
 isTerminal :: GameTree a -> Bool
 isTerminal  (Leaf _) = True
 isTerminal _ = False
 
 -- | Построение дерева игры
-gameTree :: Stone -> Board -> GameTree Board
-gameTree _ a = Leaf a
+gameTree :: Stone -> Board -> [Board] -> GameTree Board
+gameTree stone board boards =
+  Node board $ map (\m -> (m, gameTree (switchPlayer stone) (repairBoard m stone board) (board : boards) ) ) $ possibleMoves stone board boards
+  where
+    repairBoard m s b = removeStone (place m s b) s
+    removeStone b s = (deleteFromBoard loS b)
+      where
+        loS = listOfStones (Map.toList b) b s
 
 -- | Обрезание дерева игры
--- cutTree :: Int -> GameTree b a -> GameTree b a
 cutTree :: Int -> GameTree a -> GameTree a
 cutTree _ (Leaf a) = Leaf a
 cutTree n (Node b trees)
   | n == 0 = Leaf b
   | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
 
+-- | Эврестическая оценка поля
 heuristic :: GameTree Board -> Stone -> Estimate
-heuristic _ _ = Estimate 0 0 0.0
+heuristic (Node _ _) _ = Estimate 0 0 0.0
+heuristic (Leaf board) stone = Estimate 0 (Map.size $ Map.filter (== (Cell stone)) board) 0.0
 
 -- minus :: BestMove -> BestMove
 -- minus = id
@@ -648,3 +687,6 @@ min_value = Estimate 0 0 0.0
 
 max_value :: Estimate
 max_value = Estimate 0 0 0.0
+
+radiuscut :: Int
+radiuscut = 1

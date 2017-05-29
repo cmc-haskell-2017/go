@@ -67,7 +67,7 @@ data Estimate = Estimate Score Int Float
 instance Monoid BestMove where
   mempty = NoMove
   mappend (BestMove m1 e1) (BestMove m2 e2)
-    | e1 > e2  = BestMove m1 e1
+    | e1 >= e2  = BestMove m1 e1
     | otherwise = BestMove m2 e2
   mappend NoMove bm = bm
   mappend bm NoMove = bm
