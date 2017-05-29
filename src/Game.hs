@@ -589,12 +589,6 @@ maxmin stone gametree move
     makeBestMove m NoMove = NoMove -- -||- никогда сюда не зайдет
     makeBestMove pastMove (BestMove _ e) = BestMove pastMove e
 
--- max :: Stone -> GameTree Board -> BestMove
--- max alpha beta stone gametree
---   | isTerminal gametree = minus (heuristic gametree stone)
---   | otherwise =
---     fold . fmap (min (switchPlayer stone))
---
 --
 -- min :: Stone -> GameTree Board -> BestMove
 -- f - s = -AlphaBeta(child, -score, -alpha, deph+1, -player)
@@ -640,7 +634,6 @@ regionStoneWithRadius board ((x, y), cell) n =
     addCell node (Just a) = [(node, a)]
 
 
-
 -- | Проверка на конечное состояние
 isTerminal :: GameTree a -> Bool
 isTerminal  (Leaf _) = True
@@ -665,8 +658,8 @@ cutTree n (Node b trees)
 
 -- | Эврестическая оценка поля
 heuristic :: GameTree Board -> Stone -> Estimate
-heuristic (Node _ _) _ = Estimate 0 0 0.0
-heuristic (Leaf board) stone = Estimate 0 (Map.size $ Map.filter (== (Cell stone)) board) 0.0
+heuristic (Node _ _) _ = Estimate 0 0 0 0.0
+heuristic (Leaf board) stone = Estimate 0 0 (Map.size $ Map.filter (== (Cell stone)) board) 0.0
 
 -- minus :: BestMove -> BestMove
 -- minus = id
@@ -683,10 +676,10 @@ heuristic (Leaf board) stone = Estimate 0 (Map.size $ Map.filter (== (Cell stone
 
 --
 min_value :: Estimate
-min_value = Estimate 0 0 0.0
+min_value = Estimate 0 0 0 0.0
 
 max_value :: Estimate
-max_value = Estimate 0 0 0.0
+max_value = Estimate 0 0 0 0.0
 
 radiuscut :: Int
 radiuscut = 1

@@ -59,7 +59,7 @@ data GameTree a = Leaf a | Node a [(Move, GameTree a)]
 -- GameTree a () -> GameTree () a
 
 -- | Оценка поля
-data Estimate = Estimate Score Int Float
+data Estimate = Estimate Score Int Int Float
   deriving (Eq, Ord)
 
 
@@ -227,4 +227,4 @@ defaultAIColor = White
 
 -- | размер обрезки дерева
 defaultsizecut :: Int
-defaultsizecut = 3
+defaultsizecut = 2
