@@ -40,7 +40,7 @@ data Config = Config
 defaultConfig :: IO Config
 defaultConfig do =
 	cfg <- atomically $ Config
-		<$> newTVar emptyGame
+		<$> newTVar initGame
 		<*> newTvar Map.empty
 		<*> newTVar (map show [1..])
 return cfg
