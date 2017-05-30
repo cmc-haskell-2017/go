@@ -206,8 +206,18 @@ updateScreen _ = id
 handleGame :: Event -> Game -> Game
 handleGame (EventKey (MouseButton LeftButton) Up _ mouse) = moveAI . placeStone (mouseToCell mouse)
 handleGame (EventMotion mouse) = placeShadowStone (mouseToCell mouse)
-handleGame (EventKey (SpecialKey KeySpace) Up _ _) = takePass . setPass
+handleGame (EventKey (SpecialKey KeySpace) Up _ _) = passAI . takePass . setPass
 handleGame _ = id
+
+-- | пасс ИИ
+passAI :: Game -> Game
+passAI game
+  | checkScore (gameScore game) (typeAI game) = takePass $ setPass game
+  | otherwise = moveAI $ game {numberOfPass = (0, 0), movePlayer = True}
+    where
+      checkScore (x, y) stoneai
+        | stoneai == Black = x >= y
+        | otherwise = x <= y
 
 -- | Добавление пасса
 setPass :: Game -> Game
@@ -218,7 +228,7 @@ setPass game
 -- | Обработка пассов
 takePass :: Game -> Game
 takePass game
-  | np == (1,1) = checkGroups game
+  | np == (1,1) = (checkGroups game) {gamePlayer = switchPlayer (gamePlayer game)}
   | np == (2,2) = gameOver game
   | otherwise = game {gamePlayer = switchPlayer (gamePlayer game)}
   where np = (numberOfPass game)
@@ -559,7 +569,7 @@ moveAI game =
 complateAImove :: Move -> Stone -> Game -> Game
 complateAImove move stone game = aicomplate $ completeMove (removeStones (changeBoard (place move stone (gameBoard game)) game))
   where
-    aicomplate g = g {movePlayer = False}
+    aicomplate g = g {movePlayer = False, numberOfPass = (0, 0)}
 
 -- | Главная функция
 ai :: AIColor -> Board -> Int -> [Board] -> AmountStones -> Maybe Move

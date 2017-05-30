@@ -5,6 +5,7 @@ import Config
 import Models
 
 import Data.Char
+-- import Data.Generics.Any
 import qualified Data.Map as Map
 
 -- =========================================
@@ -17,7 +18,7 @@ drawGame game = translate (-w) (-h) (scale c c (pictures
   [ drawGrid
   , drawBoard (gameBoard game)
   -- , drawPass (numberOfPass game)
-  -- , drawScores (gameScore game)
+  , drawScores (gameScore game)
   -- , drawStones (scoreStones game)
   , drawEndGame (gameWinner game) (scoreStones game) (endGame game)
   ]))
