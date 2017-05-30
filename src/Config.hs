@@ -24,11 +24,14 @@ playerHandicap = 0
 
 -- | Ширина игрового поля в клетках.
 boardWidth :: Int
-boardWidth  = 9
+boardWidth  = sizeBoard
 
 -- | Высота игрового поля в клетках.
 boardHeight :: Int
-boardHeight = 9
+boardHeight = sizeBoard
+
+sizeBoard :: Int
+sizeBoard = 9
 
 -- | Размер одной клетки в пикселях.
 cellSize :: Int

@@ -53,7 +53,7 @@ data BestMove
 
 -- | Дерево игры
 -- data GameTree b a = Leaf a | Node b [(Move, GameTree b a)]
-data GameTree a = Leaf a | Node a [(Move, GameTree a)]
+data GameTree b a = Leaf b a | Node b a [(Move, GameTree b a)]
   deriving(Functor)
 
 -- GameTree a () -> GameTree () a
@@ -227,4 +227,7 @@ defaultAIColor = White
 
 -- | размер обрезки дерева
 defaultsizecut :: Int
-defaultsizecut = 2
+defaultsizecut
+  | sizeBoard == 9 = 2
+  | sizeBoard == 13 = 2
+  | sizeBoard == 19 = 1

@@ -351,6 +351,11 @@ fakeGame stone board boards = Game
   , gameBoard  = board
   , listBoard = boards
   , scoreStones = (0, 0)
+  , numberOfPass = (0, 0)
+  , endGame = Nothing
+  , typeAI = defaultAIColor
+  , movePlayer = False
+  , sizecutTree = 0
   }
 
 -- | Сколько раз встречалась такая доска раньше.
@@ -448,7 +453,7 @@ deleteFromBoard [] board = board
 deleteFromBoard (((x, y), _):xs) board = deleteFromBoard xs (Map.insert (x, y) Empty board )
 
  --Считает количество убранных камней для обоих игроков.
-countStones :: Node -> [(Node, Cell)] -> Node
+countStones :: AmountStones -> [(Node, Cell)] -> Node
 countStones a [] = a
 countStones (x, y) ((_ , a) : xs)
   | a == Cell Black = countStones (x + 1, y) xs
@@ -540,13 +545,13 @@ moveAI :: Game -> Game
 moveAI game =
   case (movePlayer game) of
     False -> game
-    True -> case ai (typeAI game) (gameBoard game) (sizecutTree game) (listBoard game)  of
+    True -> case ai (typeAI game) (gameBoard game) (sizecutTree game) (listBoard game) (scoreStones game)  of
       Nothing -> game {gamePlayer = switchPlayer (gamePlayer game), numberOfPass = setAIpass game, movePlayer = False}
       (Just move) -> complateAImove move (typeAI game) game
       where
-        setAIpass game
-          | typeAI game == White = setpass (numberOfPass game) White
-          | otherwise = setpass (numberOfPass game) Black
+        setAIpass gamepass
+          | typeAI gamepass == White = setpass (numberOfPass gamepass) White
+          | otherwise = setpass (numberOfPass gamepass) Black
         setpass (b, w) White = (b, w + 1)
         setpass (b, w) Black = (b + 1, w)
 
@@ -557,11 +562,29 @@ complateAImove move stone game = aicomplate $ completeMove (removeStones (change
     aicomplate g = g {movePlayer = False}
 
 -- | Главная функция
-ai :: AIColor -> Board -> Int -> [Board] -> Maybe Move
-ai stone board n boards =
-  case maxmin stone (cutTree n $ gameTree stone board boards) Nothing of
+ai :: AIColor -> Board -> Int -> [Board] -> AmountStones -> Maybe Move
+ai stone board n boards amountStones =
+  case maxmin stone (cutTree n $ gameTree stone board boards amountStones) Nothing of
     NoMove -> Nothing
     BestMove move _ -> (Just move)
+
+-- | Построение дерева игры
+gameTree :: Stone -> Board -> [Board] -> AmountStones -> GameTree AmountStones Board
+gameTree stone board boards amountStones =
+  Node amountStones board $ map (\m -> (m, gameTree (switchPlayer stone) (repairBoard m stone board) (board : boards) $ scoreStone stone (place m stone board) ) ) $ possibleMoves stone board boards
+  where
+    repairBoard node stoneinter boardinter = removeStone (place node stoneinter boardinter) stoneinter
+    scoreStone s b  = countStones amountStones $ listOfStones (Map.toList b) b s
+    removeStone b s = (deleteFromBoard loS b)
+      where
+        loS = listOfStones (Map.toList b) b s
+
+-- | Обрезание дерева игры
+cutTree :: Int -> GameTree b a -> GameTree b a
+cutTree _ (Leaf b a) = Leaf b a
+cutTree n (Node b a trees)
+  | n == 0 = Leaf b a
+  | otherwise = Node b a $ map (\(m, t) -> (m, cutTree (n - 1) t)) trees
 
 -- ai stone board = fromBestMove . fold . bestMoves . fmap estimate . cutTree n . gameTree
 -- ai stone board =  (minmax stone  cutTree 3 . gameTree
@@ -578,15 +601,15 @@ ai stone board n boards =
 --     return bestmove
 
 -- | Алгоритм минимакса
-maxmin :: Stone -> GameTree Board -> Maybe Move -> BestMove
-maxmin _ (Leaf _) Nothing = NoMove
+maxmin :: Stone -> GameTree AmountStones Board -> Maybe Move -> BestMove
+maxmin _ (Leaf _ _) Nothing = NoMove
 maxmin stone gametree move
   | isTerminal gametree = BestMove (getmove move) (heuristic gametree stone)
   | otherwise = fold $ map (\(m, t) -> makeBestMove m $ maxmin (switchPlayer stone) t (Just m)) (childs gametree)
   where
     getmove (Just m) = m
     getmove Nothing = (0, 0) -- допилить/ можно поставить сюда все, что угодно. Сюда никогда не зайдет, а можно ли тогда убрать это?
-    makeBestMove m NoMove = NoMove -- -||- никогда сюда не зайдет
+    makeBestMove _ NoMove = NoMove -- -||- никогда сюда не зайдет
     makeBestMove pastMove (BestMove _ e) = BestMove pastMove e
 
 --
@@ -599,14 +622,14 @@ maxmin stone gametree move
 -- альфа-бета пока не получается
 
 
-childs :: GameTree a -> [(Move, GameTree a)]
-childs (Leaf _) = []
-childs (Node a trees) = trees
+childs :: GameTree b a -> [(Move, GameTree b a)]
+childs (Leaf _ _) = []
+childs (Node _ _ trees) = trees
 
 -- | Возможные ходы
 possibleMoves :: Stone -> Board -> [Board] -> [Move]
 possibleMoves stone board boards =
-  map (\(k, a) -> k) $ cutBoard board $ Map.filterWithKey (\k _ -> isPossible k board stone boards) board
+  map (\(k, _) -> k) $ cutBoard board $ Map.filterWithKey (\k _ -> isPossible k board stone boards) board
 
 -- | Уменьшение доски, чтобы рассматривать меньше вариантов
 cutBoard :: Board -> Board -> [(Node, Cell)]
@@ -620,7 +643,7 @@ regionStone fullBoard (x : xs) = (regionStoneWithRadius fullBoard x radiuscut) +
 
 --
 regionStoneWithRadius :: Board -> (Node, Cell) -> Int -> [(Node, Cell)]
-regionStoneWithRadius board ((x, y), cell) n =
+regionStoneWithRadius board ((x, y), _) n =
   (addCell (x + n, y) $ Map.lookup (x + n, y) board) ++
   (addCell (x + n, y - n) $ Map.lookup (x + n, y - n) board) ++
   (addCell (x, y - n) $ Map.lookup (x, y - n) board) ++
@@ -635,32 +658,18 @@ regionStoneWithRadius board ((x, y), cell) n =
 
 
 -- | Проверка на конечное состояние
-isTerminal :: GameTree a -> Bool
-isTerminal  (Leaf _) = True
+isTerminal :: GameTree b a -> Bool
+isTerminal  (Leaf _ _) = True
 isTerminal _ = False
 
--- | Построение дерева игры
-gameTree :: Stone -> Board -> [Board] -> GameTree Board
-gameTree stone board boards =
-  Node board $ map (\m -> (m, gameTree (switchPlayer stone) (repairBoard m stone board) (board : boards) ) ) $ possibleMoves stone board boards
-  where
-    repairBoard m s b = removeStone (place m s b) s
-    removeStone b s = (deleteFromBoard loS b)
-      where
-        loS = listOfStones (Map.toList b) b s
-
--- | Обрезание дерева игры
-cutTree :: Int -> GameTree a -> GameTree a
-cutTree _ (Leaf a) = Leaf a
-cutTree n (Node b trees)
-  | n == 0 = Leaf b
-  | otherwise = Node b $ map (\(m, t) -> (m, cutTree (n-1) t)) trees
-
 -- | Эврестическая оценка поля
-heuristic :: GameTree Board -> Stone -> Estimate
-heuristic (Node _ _) _ = Estimate 0 0 0 0.0
-heuristic (Leaf board) stone = Estimate 0 0 (Map.size $ Map.filter (== (Cell stone)) board) 0.0
-
+heuristic :: GameTree AmountStones Board -> Stone -> Estimate
+heuristic (Node _ _ _) _ = Estimate 0 0 0 0.0
+heuristic (Leaf amountStones board) stone = Estimate 0 (stones amountStones stone) (Map.size $ Map.filter (== (Cell stone)) board) 0.0
+  where
+    stones (w, b) s
+      | s == Black = b
+      | otherwise = w
 -- minus :: BestMove -> BestMove
 -- minus = id
 
@@ -682,4 +691,8 @@ max_value :: Estimate
 max_value = Estimate 0 0 0 0.0
 
 radiuscut :: Int
-radiuscut = 1
+radiuscut
+  | sizeBoard == 9 = 1
+  | sizeBoard == 13 = 2
+  | sizeBoard == 19 = 2
+  | otherwise = 1
