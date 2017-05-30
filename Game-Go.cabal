@@ -29,6 +29,37 @@ executable Game-Go
                      , Game-Go
   default-language:    Haskell2010
 
+executable Game-Go-client
+  hs-source-dirs:      client
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , Game-Go
+                     , gloss
+                     , stm
+                     , websockets
+  default-language:    Haskell2010
+
+executable Game-Go-server
+  hs-source-dirs:      server
+  main-is:             Main.hs
+  other-modules:
+    Snakes.Server
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , containers
+                     , http-types
+                     , MonadRandom
+                     , servant
+                     , servant-server
+                     , Game-Go
+                     , stm
+                     , wai
+                     , wai-websockets
+                     , warp
+                     , websockets
+  default-language:    Haskell2010
+
 test-suite my-project-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
