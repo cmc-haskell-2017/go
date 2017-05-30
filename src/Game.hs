@@ -467,7 +467,8 @@ countStones :: AmountStones -> [(Node, Cell)] -> Node
 countStones a [] = a
 countStones (x, y) ((_ , a) : xs)
   | a == Cell Black = countStones (x + 1, y) xs
-  | otherwise = countStones (x, y + 1) xs
+  | a == Cell White = countStones (x, y + 1) xs
+  | otherwise = countStones (x, y) xs
 
 -- Возвращает список соседей для камня, у которых их цвет совпадает с цветом камня
 -- neighboursByColor :: Node -> Cell -> Board -> [(Node,Cell)]
@@ -574,14 +575,16 @@ complateAImove move stone game = aicomplate $ completeMove (removeStones (change
 -- | Главная функция
 ai :: AIColor -> Board -> Int -> [Board] -> AmountStones -> Maybe Move
 ai stone board n boards amountStones =
-  case maxmin stone (cutTree n $ gameTree stone board boards amountStones) Nothing of
+  case maxmin $ bestMoves $ fmap (heuristic stone) (cutTree n $ gameTree stone board boards amountStones) of
     NoMove -> Nothing
     BestMove move _ -> (Just move)
 
 -- | Построение дерева игры
-gameTree :: Stone -> Board -> [Board] -> AmountStones -> GameTree AmountStones Board
+gameTree :: Stone -> Board -> [Board] -> AmountStones -> GameTree (Board, AmountStones) a
 gameTree stone board boards amountStones =
-  Node amountStones board $ map (\m -> (m, gameTree (switchPlayer stone) (repairBoard m stone board) (board : boards) $ scoreStone stone (place m stone board) ) ) $ possibleMoves stone board boards
+  Node (board, amountStones)
+  $ map (\m -> (m, gameTree (switchPlayer stone) (repairBoard m stone board) (board : boards)
+  $ scoreStone stone (place m stone board) ) ) $ possibleMoves stone board boards
   where
     repairBoard node stoneinter boardinter = removeStone (place node stoneinter boardinter) stoneinter
     scoreStone s b  = countStones amountStones $ listOfStones (Map.toList b) b s
@@ -590,11 +593,10 @@ gameTree stone board boards amountStones =
         loS = listOfStones (Map.toList b) b s
 
 -- | Обрезание дерева игры
-cutTree :: Int -> GameTree b a -> GameTree b a
-cutTree _ (Leaf b a) = Leaf b a
-cutTree n (Node b a trees)
-  | n == 0 = Leaf b a
-  | otherwise = Node b a $ map (\(m, t) -> (m, cutTree (n - 1) t)) trees
+cutTree :: Int -> GameTree b a -> GameTree () b
+cutTree n (Node b trees)
+  | n == 0 = Leaf b
+  | otherwise = Node () $ map (\(m, t) -> (m, cutTree (n - 1) t)) trees
 
 -- ai stone board = fromBestMove . fold . bestMoves . fmap estimate . cutTree n . gameTree
 -- ai stone board =  (minmax stone  cutTree 3 . gameTree
@@ -611,16 +613,40 @@ cutTree n (Node b a trees)
 --     return bestmove
 
 -- | Алгоритм минимакса
-maxmin :: Stone -> GameTree AmountStones Board -> Maybe Move -> BestMove
-maxmin _ (Leaf _ _) Nothing = NoMove
-maxmin stone gametree move
-  | isTerminal gametree = BestMove (getmove move) (heuristic gametree stone)
-  | otherwise = fold $ map (\(m, t) -> makeBestMove m $ maxmin (switchPlayer stone) t (Just m)) (childs gametree)
+-- maxmin :: Stone -> GameTree AmountStones Board -> Maybe Move -> BestMove
+-- maxmin _ (Leaf _ _) Nothing = NoMove
+-- maxmin stone gametree move
+--   | isTerminal gametree = BestMove (getmove move) (heuristic gametree stone)
+--   | otherwise =
+--     fold $ map (\(m, t) -> makeBestMove m $ maxmin (switchPlayer stone) t (Just m)) (childs gametree)
+--   where
+--     getmove (Just m) = m
+--     getmove Nothing = (0, 0) -- допилить/ можно поставить сюда все, что угодно. Сюда никогда не зайдет, а можно ли тогда убрать это?
+--     makeBestMove _ NoMove = NoMove -- -||- никогда сюда не зайдет
+--     makeBestMove pastMove (BestMove _ e) = BestMove pastMove e
+
+maxmin :: (Ord a) => GameTree b a -> a
+maxmin (Leaf e) = e
+maxmin ts = max $ map (\(m, t) -> minmax t) $ childs ts
   where
-    getmove (Just m) = m
-    getmove Nothing = (0, 0) -- допилить/ можно поставить сюда все, что угодно. Сюда никогда не зайдет, а можно ли тогда убрать это?
-    makeBestMove _ NoMove = NoMove -- -||- никогда сюда не зайдет
-    makeBestMove pastMove (BestMove _ e) = BestMove pastMove e
+    max [x] = x
+    max (x : y : xs)
+      | x >= y = max (x : xs)
+      | otherwise = max (y : xs)
+
+minmax :: (Ord e) => GameTree b e -> e
+minmax (Leaf e) = e
+minmax ts = min $ map (\(m, t) -> maxmin t) $ childs ts
+  where
+    min [x] = x
+    min (x : y : xs)
+      | x <= y = min (x : xs)
+      | otherwise = min (y : xs)
+
+
+-- bestMoves :: GameTree Estimate -> GameTree BestMove
+-- bestMoves (Leaf _) = NoMove
+-- bestMoves (Node ts) = map (\(m, t) -> fmap (BestMove m) t) ts
 
 --
 -- min :: Stone -> GameTree Board -> BestMove
@@ -633,8 +659,8 @@ maxmin stone gametree move
 
 
 childs :: GameTree b a -> [(Move, GameTree b a)]
-childs (Leaf _ _) = []
-childs (Node _ _ trees) = trees
+childs (Leaf _ ) = []
+childs (Node _ trees) = trees
 
 -- | Возможные ходы
 possibleMoves :: Stone -> Board -> [Board] -> [Move]
@@ -669,13 +695,14 @@ regionStoneWithRadius board ((x, y), _) n =
 
 -- | Проверка на конечное состояние
 isTerminal :: GameTree b a -> Bool
-isTerminal  (Leaf _ _) = True
+isTerminal  (Leaf _) = True
 isTerminal _ = False
 
 -- | Эврестическая оценка поля
-heuristic :: GameTree AmountStones Board -> Stone -> Estimate
-heuristic (Node _ _ _) _ = Estimate 0 0 0 0.0
-heuristic (Leaf amountStones board) stone = Estimate 0 (stones amountStones stone) (Map.size $ Map.filter (== (Cell stone)) board) 0.0
+heuristic :: Stone -> (Board, AmountStones) -> Estimate
+-- heuristic _ (Node _ _) = Estimate 0 0 0 0.0
+heuristic stone (board, amountStones) =
+  Estimate 0 (stones amountStones stone) (Map.size $ Map.filter (== (Cell stone)) board) 0.0
   where
     stones (w, b) s
       | s == Black = b
@@ -688,10 +715,9 @@ heuristic (Leaf amountStones board) stone = Estimate 0 (stones amountStones ston
 -- estimate _ _ = Estimate 0 0 0.0
 
 -- | Лучшие ходы
--- bestMoves :: GameTree b Estimate -> GameTree b BestMove
--- bestMoves :: GameTree Estimate -> GameTree BestMove
--- bestMoves (Leaf _) = (Leaf NoMove)
--- bestMoves (Node ts) = Node $ map (\(m, t) -> (m, fmap (BestMove m) t) ) ts
+bestMoves :: GameTree b Estimate -> GameTree b BestMove
+bestMoves (Leaf e) = (Leaf NoMove)
+bestMoves (Node b ts) = Node b $ map (\(m, t) -> (m, fmap (BestMove m) t) ) ts
 
 --
 min_value :: Estimate

@@ -50,10 +50,16 @@ type AIColor = Stone
 data BestMove
   = NoMove
   | BestMove Move Estimate
+  deriving(Eq)
+
+instance Ord BestMove where
+  compare (BestMove _ e1) (BestMove _ e2) = compare e1 e2
+  compare NoMove _ = LT
+  compare _ NoMove = GT
 
 -- | Дерево игры
 -- data GameTree b a = Leaf a | Node b [(Move, GameTree b a)]
-data GameTree b a = Leaf b a | Node b a [(Move, GameTree b a)]
+data GameTree b a = Leaf a | Node b [(Move, GameTree b a)]
   deriving(Functor)
 
 -- GameTree a () -> GameTree () a
@@ -231,3 +237,4 @@ defaultsizecut
   | sizeBoard == 9 = 2
   | sizeBoard == 13 = 2
   | sizeBoard == 19 = 1
+  | otherwise = 1
