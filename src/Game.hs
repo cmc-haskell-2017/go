@@ -575,9 +575,15 @@ complateAImove move stone game = aicomplate $ completeMove (removeStones (change
 -- | Главная функция
 ai :: AIColor -> Board -> Int -> [Board] -> AmountStones -> Maybe Move
 ai stone board n boards amountStones =
-  case maxmin $ bestMoves $ fmap (heuristic stone) (cutTree n $ gameTree stone board boards amountStones) of
+  case maxmin (estimateMin) (estimateMax) $ bestMoves $ fmap (heuristic stone) (cutTree n $ gameTree stone board boards amountStones) of
     NoMove -> Nothing
     BestMove move _ -> (Just move)
+
+estimateMin :: BestMove
+estimateMin = BestMove (0, 0) $ Estimate 0.0 (-1000) (-1000) (-1000.0)
+
+estimateMax :: BestMove
+estimateMax = BestMove (0, 0) $ Estimate 361.0 1000 1000 1000.0
 
 -- | Построение дерева игры
 gameTree :: Stone -> Board -> [Board] -> AmountStones -> GameTree (Board, AmountStones) a
@@ -625,23 +631,23 @@ cutTree n (Node b trees)
 --     makeBestMove _ NoMove = NoMove -- -||- никогда сюда не зайдет
 --     makeBestMove pastMove (BestMove _ e) = BestMove pastMove e
 
-maxmin :: (Ord a) => GameTree b a -> a
-maxmin (Leaf e) = e
-maxmin ts = max $ map (\(m, t) -> minmax t) $ childs ts
+maxmin :: (Ord a) => a -> a -> GameTree b a -> a
+maxmin _ _ (Leaf e) = e
+maxmin alpha beta ts = max $ map (\(m, t) -> minmax alpha beta t) $ childs ts
   where
     max [x] = x
     max (x : y : xs)
       | x >= y = max (x : xs)
       | otherwise = max (y : xs)
 
-minmax :: (Ord e) => GameTree b e -> e
-minmax (Leaf e) = e
-minmax ts = min $ map (\(m, t) -> maxmin t) $ childs ts
+minmax :: (Ord e) => e -> e -> GameTree b e -> e
+minmax _ _ (Leaf e) = e
+minmax alpha beta ts = min beta $ map (\(m, t) -> maxmin alpha beta t) $ childs ts
   where
-    min [x] = x
-    min (x : y : xs)
-      | x <= y = min (x : xs)
-      | otherwise = min (y : xs)
+    min score [] = score
+    min score (x : xs)
+      | x <= score = min x (xs)
+      | otherwise = min score (xs)
 
 
 -- bestMoves :: GameTree Estimate -> GameTree BestMove
@@ -728,7 +734,7 @@ max_value = Estimate 0 0 0 0.0
 
 radiuscut :: Int
 radiuscut
-  | sizeBoard == 9 = 1
+  | sizeBoard == 9 = 2
   | sizeBoard == 13 = 2
   | sizeBoard == 19 = 2
   | otherwise = 1
